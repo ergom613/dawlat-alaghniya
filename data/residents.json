@@ -1518,6 +1518,138 @@
       "points": 0,
       "x": 240,
       "z": -96
+    },
+    {
+      "id": 132,
+      "name": "munalfalasi1",
+      "label": "بيت رقم 132",
+      "anonymous": false,
+      "owner": false,
+      "level": 3,
+      "seed": "munalfalasi1",
+      "points": 0,
+      "x": 336,
+      "z": 24
+    },
+    {
+      "id": 133,
+      "name": "moose.1994541",
+      "label": "بيت رقم 133",
+      "anonymous": false,
+      "owner": false,
+      "level": 3,
+      "seed": "moose.1994541",
+      "points": 0,
+      "x": 0,
+      "z": -24
+    },
+    {
+      "id": 134,
+      "name": "saraward3778",
+      "label": "بيت رقم 134",
+      "anonymous": false,
+      "owner": false,
+      "level": 3,
+      "seed": "saraward3778",
+      "points": 0,
+      "x": 72,
+      "z": -96
+    },
+    {
+      "id": 135,
+      "name": "omahmad7342",
+      "label": "بيت رقم 135",
+      "anonymous": false,
+      "owner": false,
+      "level": 3,
+      "seed": "omahmad7342",
+      "points": 0,
+      "x": 216,
+      "z": 240
+    },
+    {
+      "id": 136,
+      "name": "mogaeffggg",
+      "label": "بيت رقم 136",
+      "anonymous": false,
+      "owner": false,
+      "level": 3,
+      "seed": "mogaeffggg",
+      "points": 0,
+      "x": -24,
+      "z": 72
+    },
+    {
+      "id": 137,
+      "name": "nblhnn6118",
+      "label": "بيت رقم 137",
+      "anonymous": false,
+      "owner": false,
+      "level": 3,
+      "seed": "nblhnn6118",
+      "points": 0,
+      "x": -24,
+      "z": 48
+    },
+    {
+      "id": 138,
+      "name": "wrdlshmlwy",
+      "label": "بيت رقم 138",
+      "anonymous": false,
+      "owner": false,
+      "level": 3,
+      "seed": "wrdlshmlwy",
+      "points": 0,
+      "x": 168,
+      "z": -120
+    },
+    {
+      "id": 139,
+      "name": "flower.7ed",
+      "label": "بيت رقم 139",
+      "anonymous": false,
+      "owner": false,
+      "level": 3,
+      "seed": "flower.7ed",
+      "points": 8,
+      "x": 144,
+      "z": -120
+    },
+    {
+      "id": 140,
+      "name": "dooja_e",
+      "label": "بيت رقم 140",
+      "anonymous": false,
+      "owner": false,
+      "level": 3,
+      "seed": "dooja_e",
+      "points": 2,
+      "x": -24,
+      "z": 96
+    },
+    {
+      "id": 141,
+      "name": "om_fahad_q8",
+      "label": "بيت رقم 141",
+      "anonymous": false,
+      "owner": false,
+      "level": 3,
+      "seed": "om_fahad_q8",
+      "points": 0,
+      "x": 288,
+      "z": -72
+    },
+    {
+      "id": 142,
+      "name": "mk.hld528",
+      "label": "بيت رقم 142",
+      "anonymous": false,
+      "owner": false,
+      "level": 3,
+      "seed": "mk.hld528",
+      "points": 0,
+      "x": 336,
+      "z": 0
     }
   ]
 }
