@@ -1494,6 +1494,30 @@
       "points": 0,
       "x": 48,
       "z": -72
+    },
+    {
+      "id": 130,
+      "name": "Sobhe Sloom",
+      "label": "بيت رقم 130",
+      "anonymous": false,
+      "owner": false,
+      "level": 3,
+      "seed": "Sobhe Sloom",
+      "points": 0,
+      "x": 0,
+      "z": 144
+    },
+    {
+      "id": 131,
+      "name": "azouza",
+      "label": "بيت رقم 131",
+      "anonymous": false,
+      "owner": false,
+      "level": 3,
+      "seed": "azouza",
+      "points": 0,
+      "x": 240,
+      "z": -96
     }
   ]
 }
