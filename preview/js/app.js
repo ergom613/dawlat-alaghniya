@@ -9,6 +9,7 @@ import { createWeather, WEATHER_AR } from './weather.js';
 import { createCelebrations, highestMilestone } from './celebrate.js';
 import { createTour } from './tour.js';
 import { buildResidents } from './plots.js';
+import { assignBlockPlots, createBlockStreets } from './blocks.js';
 import { initOwner } from './owner.js';
 import { createCrowd } from './crowd.js';
 import { createWedding } from './wedding.js';
@@ -72,7 +73,7 @@ let currentSeed = START_SEED;
 let demo = { active: RECORD, t: 0 };
 let badgeEl, searchInput, levelSlider, levelLabel, foundMsg;
 let hemiLight, sunLight, fillLight, skyMesh;
-let dayNight = null, lamps = null, crowd = null, birds = null, weather = null, celebrations = null, tour = null, wedding = null;
+let dayNight = null, lamps = null, crowd = null, birds = null, weather = null, celebrations = null, tour = null, wedding = null, blockLayout = null, blockStreets = null;
 let allResidents = [];
 let selectedResident = null;
 let plotTents = []; // full procedural tents + tags for real residents (not the selected hero)
@@ -2358,6 +2359,10 @@ async function main() {
     });
     const built = buildResidents(data, fileRes.residents || [], DEMO_N > 1 ? DEMO_N : 0);
     allResidents = built.residents;
+    if (DEMO_N <= 1) {
+      blockLayout = assignBlockPlots(allResidents, data);
+      blockStreets = createBlockStreets({ scene, groundY, data, layout: blockLayout });
+    }
     const first = allResidents[0] || { id: 1, name: 'بيت رقم 1', label: 'بيت رقم 1', seed: 'house_1', level: 1, x: plot.x, z: plot.z, i: 0, anonymous: true };
     currentSeed = first.seed || 'house_1';
     currentLevel = first.level || START_LEVEL;
@@ -2449,6 +2454,7 @@ async function main() {
       onAdded: (rec) => {
         rec.i = allResidents.length;
         allResidents.push(rec);
+        if (monacoData) blockLayout = assignBlockPlots(allResidents, monacoData);
         placePlotTents();
         if (weather && weather.rebuildRoofs) weather.rebuildRoofs(allResidents);
         updateStats();
@@ -2477,6 +2483,8 @@ async function main() {
     getWeather: () => weather && weather.getMode(),
     getWeatherKind: () => weather && weather.getKind(),
     weather,
+    blockLayout,
+    blockStreets,
     setTod: (t) => {
       if (!dayNight) return lastSky;
       lastSky = dayNight.update(0, t);

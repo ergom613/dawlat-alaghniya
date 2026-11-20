@@ -47,6 +47,10 @@ function harbourPolys(data) {
   return out;
 }
 
+export function isDryAt(data, x, z, margin = 8) {
+  return isDryLand(x, z, data.land || [], harbourPolys(data), margin);
+}
+
 export function monacoBBox(data) {
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
   for (const rings of data.land || []) {
