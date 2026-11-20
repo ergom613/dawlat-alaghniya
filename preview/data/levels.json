@@ -1,0 +1,248 @@
+{
+ "pointRule": {
+  "ar": "اللايك = ١، التعليق = ٢، إعادة الإرسال / المشاركة = ٣، الهدية = ٥. كل ٥٠ نقطة = لفل واحد. اللفل = ١ + الأرض من النقاط÷٥٠، وأعلى لفل ٣٠.",
+  "en": "Like = 1, comment = 2, share/repost = 3, gift = 5. Every 50 points = +1 level. level = 1 + floor(points/50), max 30."
+ },
+ "levels": [
+  {
+   "level": 1,
+   "points": 0,
+   "ar": "خيمة",
+   "en": "Tent",
+   "adds_ar": "خيمة قماش صغيرة على قطعة الأرض.",
+   "adds_en": "A small canvas tent on the plot."
+  },
+  {
+   "level": 2,
+   "points": 50,
+   "ar": "كوخ خشب",
+   "en": "Wood hut",
+   "adds_ar": "جدران خشب وباب قماش.",
+   "adds_en": "Wooden walls and a fabric door."
+  },
+  {
+   "level": 3,
+   "points": 100,
+   "ar": "باب ونافذة",
+   "en": "Door and window",
+   "adds_ar": "باب خشبي صحيح ونافذة واحدة.",
+   "adds_en": "A proper wooden door and one window."
+  },
+  {
+   "level": 4,
+   "points": 150,
+   "ar": "سقف قرميد",
+   "en": "Tiled roof",
+   "adds_ar": "سقف قرميد حسب لون البيت.",
+   "adds_en": "A tiled roof in the house's colours."
+  },
+  {
+   "level": 5,
+   "points": 200,
+   "ar": "مدخنة",
+   "en": "Chimney",
+   "adds_ar": "مدخنة حجر ودخان خفيف.",
+   "adds_en": "A stone chimney with light smoke."
+  },
+  {
+   "level": 6,
+   "points": 250,
+   "ar": "بيت حجري صغير",
+   "en": "Small stone house",
+   "adds_ar": "جدران حجر، البيت أكبر شوي، ومصاريع.",
+   "adds_en": "Stone walls, a slightly larger house, and shutters."
+  },
+  {
+   "level": 7,
+   "points": 300,
+   "ar": "ممر حديقة",
+   "en": "Garden path",
+   "adds_ar": "ممر حجري وأحواض ورد.",
+   "adds_en": "A stone path and flower beds."
+  },
+  {
+   "level": 8,
+   "points": 350,
+   "ar": "سياج",
+   "en": "Fence",
+   "adds_ar": "سياج خشبي حول الأرض.",
+   "adds_en": "A wooden fence around the plot."
+  },
+  {
+   "level": 9,
+   "points": 400,
+   "ar": "ظلة ونوافذ",
+   "en": "Awning and windows",
+   "adds_ar": "ظلة مخططة ونوافذ زيادة.",
+   "adds_en": "A striped awning and extra windows."
+  },
+  {
+   "level": 10,
+   "points": 450,
+   "ar": "أساس الطابق الثاني",
+   "en": "Second-floor frame",
+   "adds_ar": "حيطان الطابق الثاني تطلع، وأول سيارة قدام البيت.",
+   "adds_en": "The second-floor walls go up, and a first car parks out front."
+  },
+  {
+   "level": 11,
+   "points": 500,
+   "ar": "بيت طابقين",
+   "en": "Two-storey house",
+   "adds_ar": "طابق ثاني مكتمل والسقف فوق.",
+   "adds_en": "A complete second floor with the roof on top."
+  },
+  {
+   "level": 12,
+   "points": 550,
+   "ar": "شرفة",
+   "en": "Balcony",
+   "adds_ar": "شرفة أمامية مع درابزين.",
+   "adds_en": "A front balcony with a railing."
+  },
+  {
+   "level": 13,
+   "points": 600,
+   "ar": "أشجار الحديقة",
+   "en": "Garden trees",
+   "adds_ar": "شجرتين بالحديقة.",
+   "adds_en": "Two trees in the garden."
+  },
+  {
+   "level": 14,
+   "points": 650,
+   "ar": "كراج",
+   "en": "Garage",
+   "adds_ar": "كراج جانبي.",
+   "adds_en": "A side garage."
+  },
+  {
+   "level": 15,
+   "points": 700,
+   "ar": "مسبح صغير",
+   "en": "Small pool",
+   "adds_ar": "مسبح مستطيل تركواز، وقارب صغير بالميناء.",
+   "adds_en": "A small rectangular turquoise pool, and a small boat in the harbour."
+  },
+  {
+   "level": 16,
+   "points": 750,
+   "ar": "فيلا",
+   "en": "Villa",
+   "adds_ar": "واجهة فيلا، أعمدة عند الباب، وطلاء أفتح.",
+   "adds_en": "Villa facade, entrance columns, and lighter stucco."
+  },
+  {
+   "level": 17,
+   "points": 800,
+   "ar": "سطح ومسبح أكبر",
+   "en": "Deck and larger pool",
+   "adds_ar": "سطح خشب، مسبح أكبر، وكرسيين.",
+   "adds_en": "A wooden deck, a larger pool, and two lounge chairs."
+  },
+  {
+   "level": 18,
+   "points": 850,
+   "ar": "نافورة",
+   "en": "Fountain",
+   "adds_ar": "نافورة بواجهة البيت.",
+   "adds_en": "A courtyard fountain at the front."
+  },
+  {
+   "level": 19,
+   "points": 900,
+   "ar": "جناح إضافي",
+   "en": "Extra wing",
+   "adds_ar": "جناح جانبي يزيد مساحة البيت.",
+   "adds_en": "A side wing that enlarges the house."
+  },
+  {
+   "level": 20,
+   "points": 950,
+   "ar": "عمارة",
+   "en": "Apartment block",
+   "adds_ar": "عمارة أربع طوابق بسقف مسطّح ونوافذ منتظمة، وسيارة رياضية قدامها.",
+   "adds_en": "A four-storey apartment block with a flat roof, regular windows, and a sports car out front."
+  },
+  {
+   "level": 21,
+   "points": 1000,
+   "ar": "طوابق زيادة",
+   "en": "Extra floors",
+   "adds_ar": "العمارة بتصير ست طوابق.",
+   "adds_en": "The block rises to six floors."
+  },
+  {
+   "level": 22,
+   "points": 1050,
+   "ar": "مدخل زجاج",
+   "en": "Glass lobby",
+   "adds_ar": "ردهة زجاج ومظلة عند المدخل.",
+   "adds_en": "A glass lobby and entrance canopy."
+  },
+  {
+   "level": 23,
+   "points": 1100,
+   "ar": "برج منخفض",
+   "en": "Mid-rise tower",
+   "adds_ar": "برج متوسط، حوالي تسع طوابق، والزجاج بلش.",
+   "adds_en": "A mid-rise of about nine floors, with glass starting to take over."
+  },
+  {
+   "level": 24,
+   "points": 1150,
+   "ar": "واجهة زجاج",
+   "en": "Glass facade",
+   "adds_ar": "واجهة زجاج تغطي البرج.",
+   "adds_en": "A glass curtain wall wraps the tower."
+  },
+  {
+   "level": 25,
+   "points": 1200,
+   "ar": "برج عالي",
+   "en": "High-rise",
+   "adds_ar": "برج عالي حوالي أربعطعش طابق.",
+   "adds_en": "A high-rise of about fourteen floors."
+  },
+  {
+   "level": 26,
+   "points": 1250,
+   "ar": "ارتدادات",
+   "en": "Setbacks",
+   "adds_ar": "الطوابق الفوق بتضيق أو بتتدرج.",
+   "adds_en": "Upper floors slim or step back."
+  },
+  {
+   "level": 27,
+   "points": 1300,
+   "ar": "نوافذ مضاءة",
+   "en": "Lit windows",
+   "adds_ar": "كتير نوافذ بتضوي من جوا.",
+   "adds_en": "Many windows glow from inside."
+  },
+  {
+   "level": 28,
+   "points": 1350,
+   "ar": "تاج البرج",
+   "en": "Tower crown",
+   "adds_ar": "تاج أو زينة فوق رأس البرج.",
+   "adds_en": "A decorative crown at the top of the tower."
+  },
+  {
+   "level": 29,
+   "points": 1400,
+   "ar": "ناطحة سحاب",
+   "en": "Skyscraper",
+   "adds_ar": "جسم زجاجي كامل، ناطحة سحاب تقريباً جاهزة.",
+   "adds_en": "A full glass shaft — the skyscraper is almost complete."
+  },
+  {
+   "level": 30,
+   "points": 1450,
+   "ar": "ناطحة سحاب",
+   "en": "Landmark skyscraper",
+   "adds_ar": "ناطحة سحاب معلَم مع قمة ومسلة، سيارة فورمولا، ويخت كبير بالميناء.",
+   "adds_en": "A landmark glass skyscraper with a rooftop and spire, an F1 car, and a large yacht in the harbour."
+  }
+ ]
+}

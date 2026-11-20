@@ -1,0 +1,37 @@
+{
+  "source": "AWS Terrain Tiles (Mapzen Terrarium format), zoom 14",
+  "imagery": "EU-DEM (Copernicus). Tile metadata reports eudem_dem_5deg_n40e005.tif",
+  "license": "Produced using Copernicus data and information funded by the European Union \u2014 EU-DEM layers. Free to use, including commercially, with attribution.",
+  "attribution": "Terrain: EU-DEM / Copernicus",
+  "url": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+  "docs": "https://github.com/tilezen/joerd/blob/master/docs/attribution.md",
+  "origin": {
+    "lon": 7.42445,
+    "lat": 43.73835
+  },
+  "projection": {
+    "x": "east metres from origin",
+    "z": "south metres from origin",
+    "m_per_deg_lon": 80429.20684765598,
+    "m_per_deg_lat": 110574.0
+  },
+  "originX": -5000.0,
+  "originZ": -8000.0,
+  "step": 25.0,
+  "cols": 401,
+  "rows": 421,
+  "unit": "decimetres",
+  "bin": "terrain.bin",
+  "layout": "int16 le heights (decimetres), then uint8 class per cell, row-major, z south",
+  "classes": {
+    "0": "sea",
+    "1": "urban",
+    "2": "mountain",
+    "3": "park",
+    "4": "forest",
+    "5": "grass",
+    "6": "beach"
+  },
+  "min_m": 0.0,
+  "max_m": 1223.1067755295974
+}
