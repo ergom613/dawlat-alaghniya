@@ -3,9 +3,9 @@
 import * as THREE from 'three';
 
 export const DANCE_RINGS = [
-  { r: 6.6, n: 54, speed: 0.48, dir: 1 },
-  { r: 10.0, n: 78, speed: 0.40, dir: -1 },
-  { r: 13.6, n: 100, speed: 0.34, dir: 1 },
+  { r: 6.6, n: 54, speed: 0.16, dir: 1 },
+  { r: 10.0, n: 78, speed: 0.13, dir: -1 },
+  { r: 13.6, n: 100, speed: 0.11, dir: 1 },
 ];
 export const CROWD_N = 68; // 54+78+100+68 = 300
 
@@ -138,13 +138,13 @@ export function createDabkeCrowd(plazaX, plazaZ) {
       const a = p.base + (dance ? time * p.speed * p.dir : 0);
       const x = Math.cos(a) * p.ringR;
       const z = Math.sin(a) * p.ringR;
-      const beat = time * 6.4 + p.phase;
-      const bob = dance ? Math.abs(Math.sin(beat)) * 0.10 : Math.sin(time * 1.6 + p.phase) * 0.03;
+      const beat = time * 2.13 + p.phase;
+      const bob = dance ? Math.abs(Math.sin(beat)) * 0.07 : Math.sin(time * 1.1 + p.phase) * 0.02;
       // Face the center; local ±X follows the circle so lowered arms reach the neighbors.
       const yaw = -a - Math.PI / 2 + (dance ? p.dir * 0.10 : 0);
       const kick = dance ? Math.sin(beat) : 0;
-      const legLX = skipLegs ? 0 : (dance ? Math.max(0, kick) * 0.70 : 0.05);
-      const legRX = skipLegs ? 0 : (dance ? Math.max(0, -kick) * 0.55 : 0.04);
+      const legLX = skipLegs ? 0 : (dance ? Math.max(0, kick) * 0.45 : 0.05);
+      const legRX = skipLegs ? 0 : (dance ? Math.max(0, -kick) * 0.35 : 0.04);
       const drop = dance ? ARM_DOWN : ARM_DOWN * 0.45;
       placePart(meshes.head, i, x, bob, z, yaw, 0, 1.42, 0, 0, 0, 0);
       placePart(meshes.hair, i, x, bob, z, yaw, 0, 1.50, 0, 0, 0, 0);
