@@ -8,8 +8,8 @@
    "owner": true,
    "level": 30,
    "seed": "house_1",
-   "x": 160.0,
-   "z": 65.0
+   "x": 160,
+   "z": 65
   },
   {
    "id": 2,
@@ -19,8 +19,8 @@
    "owner": false,
    "level": 1,
    "seed": "mohammad.m.qublan",
-   "x": 144.0,
-   "z": 72.0
+   "x": 144,
+   "z": 72
   },
   {
    "id": 3,
@@ -30,8 +30,8 @@
    "owner": false,
    "level": 1,
    "seed": "dz___meloura___2005",
-   "x": 168.0,
-   "z": 48.0
+   "x": 168,
+   "z": 48
   },
   {
    "id": 4,
@@ -41,8 +41,8 @@
    "owner": false,
    "level": 1,
    "seed": "a_s_a_d_f16",
-   "x": 144.0,
-   "z": 48.0
+   "x": 144,
+   "z": 48
   },
   {
    "id": 5,
@@ -52,8 +52,8 @@
    "owner": false,
    "level": 1,
    "seed": "lion2.z",
-   "x": 168.0,
-   "z": 96.0
+   "x": 168,
+   "z": 96
   },
   {
    "id": 6,
@@ -63,8 +63,8 @@
    "owner": false,
    "level": 1,
    "seed": "zyn2875",
-   "x": 192.0,
-   "z": 72.0
+   "x": 192,
+   "z": 72
   },
   {
    "id": 7,
@@ -74,8 +74,8 @@
    "owner": false,
    "level": 10,
    "seed": "hnoo_kassar",
-   "x": 144.0,
-   "z": 96.0
+   "x": 144,
+   "z": 96
   },
   {
    "id": 8,
@@ -582,6 +582,282 @@
    "seed": "k_alsgaf",
    "x": 48,
    "z": 72
+  },
+  {
+   "id": 54,
+   "name": "dllbwtfsh",
+   "label": "بيت رقم 54",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "dllbwtfsh",
+   "points": 0,
+   "x": 168,
+   "z": -24
+  },
+  {
+   "id": 55,
+   "name": "safya_86",
+   "label": "بيت رقم 55",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "safya_86",
+   "points": 0,
+   "x": 144,
+   "z": -24
+  },
+  {
+   "id": 56,
+   "name": "bthynhlztry",
+   "label": "بيت رقم 56",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "bthynhlztry",
+   "points": 0,
+   "x": 192,
+   "z": -24
+  },
+  {
+   "id": 57,
+   "name": "nargs34509",
+   "label": "بيت رقم 57",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "nargs34509",
+   "points": 0,
+   "x": 120,
+   "z": -24
+  },
+  {
+   "id": 58,
+   "name": "om.sajad_sh",
+   "label": "بيت رقم 58",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "om.sajad_sh",
+   "points": 2,
+   "x": 264,
+   "z": 72
+  },
+  {
+   "id": 59,
+   "name": "alhadidi_12347",
+   "label": "بيت رقم 59",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "alhadidi_12347",
+   "points": 2,
+   "x": 216,
+   "z": -24
+  },
+  {
+   "id": 60,
+   "name": "wrdbwnmws",
+   "label": "بيت رقم 60",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "wrdbwnmws",
+   "points": 0,
+   "x": 264,
+   "z": 48
+  },
+  {
+   "id": 61,
+   "name": "mnasraamal",
+   "label": "بيت رقم 61",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "mnasraamal",
+   "points": 0,
+   "x": 264,
+   "z": 96
+  },
+  {
+   "id": 62,
+   "name": "90ummazin",
+   "label": "بيت رقم 62",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "90ummazin",
+   "points": 0,
+   "x": 96,
+   "z": -24
+  },
+  {
+   "id": 63,
+   "name": "hhhh135800",
+   "label": "بيت رقم 63",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "hhhh135800",
+   "points": 0,
+   "x": 264,
+   "z": 24
+  },
+  {
+   "id": 64,
+   "name": "umahmad1134",
+   "label": "بيت رقم 64",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "umahmad1134",
+   "points": 0,
+   "x": 168,
+   "z": -48
+  },
+  {
+   "id": 65,
+   "name": "alfajer_handcrafts",
+   "label": "بيت رقم 65",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "alfajer_handcrafts",
+   "points": 0,
+   "x": 144,
+   "z": -48
+  },
+  {
+   "id": 66,
+   "name": "bdallh57663",
+   "label": "بيت رقم 66",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "bdallh57663",
+   "points": 0,
+   "x": 48,
+   "z": 96
+  },
+  {
+   "id": 67,
+   "name": "sahar.tamimi0",
+   "label": "بيت رقم 67",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "sahar.tamimi0",
+   "points": 0,
+   "x": 192,
+   "z": -48
+  },
+  {
+   "id": 68,
+   "name": "goose.5390637",
+   "label": "بيت رقم 68",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "goose.5390637",
+   "points": 0,
+   "x": 72,
+   "z": 144
+  },
+  {
+   "id": 69,
+   "name": "rfyf72123",
+   "label": "بيت رقم 69",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "rfyf72123",
+   "points": 0,
+   "x": 240,
+   "z": -24
+  },
+  {
+   "id": 70,
+   "name": "bahn903",
+   "label": "بيت رقم 70",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "bahn903",
+   "points": 0,
+   "x": 120,
+   "z": -48
+  },
+  {
+   "id": 71,
+   "name": "amy129215",
+   "label": "بيت رقم 71",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "amy129215",
+   "points": 0,
+   "x": 264,
+   "z": 0
+  },
+  {
+   "id": 72,
+   "name": "mokdadhayet",
+   "label": "بيت رقم 72",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "mokdadhayet",
+   "points": 0,
+   "x": 48,
+   "z": 120
+  },
+  {
+   "id": 73,
+   "name": "prll_s3",
+   "label": "بيت رقم 73",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "prll_s3",
+   "points": 0,
+   "x": 72,
+   "z": -24
+  },
+  {
+   "id": 74,
+   "name": "m7019465",
+   "label": "بيت رقم 74",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "m7019465",
+   "points": 0,
+   "x": 216,
+   "z": -48
+  },
+  {
+   "id": 75,
+   "name": "sydqnynt",
+   "label": "بيت رقم 75",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "sydqnynt",
+   "points": 0,
+   "x": 288,
+   "z": 72
+  },
+  {
+   "id": 76,
+   "name": "ixoor7",
+   "label": "بيت رقم 76",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "ixoor7",
+   "points": 0,
+   "x": 288,
+   "z": 48
   }
  ]
 }
