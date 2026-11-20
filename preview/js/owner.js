@@ -159,28 +159,9 @@ function styleOnce() {
   const st = document.createElement('style');
   st.id = 'owner-style';
   st.textContent = `
-    body:not(.owner-mode) .owner-only { display: none !important; }
-    #ownerPanel {
-      position: absolute; bottom: 150px; right: 12px; left: 12px;
-      max-width: 520px; margin-inline-start: auto;
-      padding: 12px 14px 14px; z-index: 8;
-    }
-    #ownerPanel h2 { margin: 0 0 8px; font-size: 16px; color: var(--gold); }
-    #ownerPanel label { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
-    #ownerPanel input[type="text"], #ownerPanel input[type="password"], #ownerPanel input[type="number"] {
-      width: 100%; border: 0; background: rgba(255,255,255,0.1); color: var(--text);
-      border-radius: 12px; padding: 10px 12px; font-size: 15px; outline: none;
-      font-family: inherit;
-    }
-    #ownerPanel .row2 { display: flex; gap: 10px; }
-    #ownerPanel .row2 > div { flex: 1; }
-    #ownerPanel .actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-    #ownerMsg { font-size: 13px; margin-top: 8px; color: var(--muted); min-height: 1.2em; }
-    #ownerMsg.ok { color: #9ee6a0; }
-    #ownerMsg.err { color: #ffb4a8; }
-    #ownerTokenBox { margin-bottom: 8px; }
-    #ownerTokenBox p { margin: 0 0 8px; font-size: 13px; color: var(--text); line-height: 1.45; }
-  `;
+    /* Panel look lives in index.html. Keep only runtime helpers here. */
+    #ownerPanel { position: relative; z-index: 8; }
+    `;
   document.head.appendChild(st);
 }
 
@@ -229,8 +210,10 @@ function ensurePanel() {
     </form>
     <div id="ownerMsg"></div>
   `;
+  const stack = $('bottomStack');
   const hud = $('hud') || document.body;
-  hud.appendChild(wrap);
+  if (stack) stack.insertBefore(wrap, stack.firstChild);
+  else hud.appendChild(wrap);
   return wrap;
 }
 
@@ -252,14 +235,39 @@ export function openOwnerMode() {
   document.body.classList.add('owner-mode');
   ensurePanel();
   refreshTokenUi();
+  // Add-resident sheet stays closed until «إضافة» is tapped.
+}
+
+export function closeAddPanel() {
   const panel = $('ownerPanel');
-  if (panel) panel.style.display = '';
+  if (panel) {
+    panel.classList.remove('open');
+    panel.style.display = '';
+  }
+  const btn = $('btnOwnerAdd');
+  if (btn) btn.classList.remove('on');
+}
+
+export function openAddPanel() {
+  ensurePanel();
+  refreshTokenUi();
+  const panel = $('ownerPanel');
+  if (panel) {
+    panel.classList.add('open');
+    panel.style.display = '';
+  }
+  const btn = $('btnOwnerAdd');
+  if (btn) btn.classList.add('on');
+}
+
+export function toggleAddPanel() {
+  const panel = $('ownerPanel');
+  if (panel && panel.classList.contains('open')) closeAddPanel();
+  else openAddPanel();
 }
 
 export function closeOwnerMode() {
-  const panel = $('ownerPanel');
-  if (panel) panel.style.display = 'none';
-  // Keep owner-only tools hidden again unless the URL asked for owner mode.
+  closeAddPanel();
   if (!isOwnerQuery()) document.body.classList.remove('owner-mode');
 }
 
@@ -277,7 +285,7 @@ function bindPanel(api) {
     refreshTokenUi();
     setMsg('انحذف الرمز من هالجهاز.', 'ok');
   };
-  $('ownerClose').onclick = () => closeOwnerMode();
+  $('ownerClose').onclick = () => closeAddPanel();
   $('ownerAddForm').addEventListener('submit', (e) => {
     e.preventDefault();
     addResidentFlow(api).catch((err) => setMsg(err.message || String(err), 'err'));
@@ -352,7 +360,7 @@ function bindLongPress(api) {
   let sx = 0, sy = 0;
   const cancel = () => { if (timer) { clearTimeout(timer); timer = 0; } };
   canvas.addEventListener('pointerdown', (e) => {
-    if (document.body.classList.contains('owner-mode') && $('ownerPanel') && $('ownerPanel').style.display !== 'none') return;
+    if (document.body.classList.contains('owner-mode') && $('ownerPanel') && $('ownerPanel').classList.contains('open')) return;
     sx = e.clientX; sy = e.clientY;
     timer = setTimeout(() => {
       timer = 0;
@@ -372,9 +380,14 @@ export function initOwner(api) {
   if (isOwnerQuery()) openOwnerMode();
   bindPanel(api);
   bindLongPress(api);
-  if (!isOwnerQuery()) {
-    const panel = $('ownerPanel');
-    if (panel) panel.style.display = 'none';
+  const addBtn = $('btnOwnerAdd');
+  if (addBtn) {
+    addBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!document.body.classList.contains('owner-mode')) openOwnerMode();
+      toggleAddPanel();
+    });
   }
-  return { openOwnerMode, closeOwnerMode, storedToken, TOKEN_KEY };
+  closeAddPanel();
+  return { openOwnerMode, closeOwnerMode, openAddPanel, closeAddPanel, toggleAddPanel, storedToken, TOKEN_KEY };
 }

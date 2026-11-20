@@ -4,9 +4,9 @@ import { GLTFLoader } from '../vendor/GLTFLoader.js';
 import { clone as cloneSkinned } from '../vendor/SkeletonUtils.js';
 
 const KINDS = [
-  { id: 'parrot', url: './assets/birds/parrot.glb', size: 9.0, speed: 18, flap: 1.15 },
-  { id: 'stork', url: './assets/birds/stork.glb', size: 12.0, speed: 16, flap: 0.85 },
-  { id: 'pigeon', url: './assets/birds/pigeon.glb', size: 6.5, speed: 15, flap: 1.35 },
+  { id: 'parrot', url: './assets/birds/parrot.glb', size: 9.0, speed: 6.0, flap: 0.48 },
+  { id: 'stork', url: './assets/birds/stork.glb', size: 12.0, speed: 5.2, flap: 0.36 },
+  { id: 'pigeon', url: './assets/birds/pigeon.glb', size: 6.5, speed: 5.0, flap: 0.52 },
 ];
 
 function meshBox(root) {
@@ -91,10 +91,10 @@ export function createFlocks(scene) {
 
   // Flock anchors: moving centers the birds steer toward
   const flocks = [
-    { kind: 'pigeon', n: 16, cx: 180, cz: 80, y: 72, rx: 140, rz: 110, speed: 0.18, phase: 0.2 },
-    { kind: 'parrot', n: 12, cx: 240, cz: -40, y: 110, rx: 180, rz: 140, speed: 0.14, phase: 1.8 },
-    { kind: 'stork', n: 10, cx: 80, cz: 40, y: 150, rx: 240, rz: 180, speed: 0.10, phase: 3.1 },
-    { kind: 'pigeon', n: 9, cx: 40, cz: -120, y: 88, rx: 120, rz: 90, speed: 0.20, phase: 4.4 },
+    { kind: 'pigeon', n: 16, cx: 180, cz: 80, y: 72, rx: 140, rz: 110, speed: 0.06, phase: 0.2 },
+    { kind: 'parrot', n: 12, cx: 240, cz: -40, y: 110, rx: 180, rz: 140, speed: 0.045, phase: 1.8 },
+    { kind: 'stork', n: 10, cx: 80, cz: 40, y: 150, rx: 240, rz: 180, speed: 0.033, phase: 3.1 },
+    { kind: 'pigeon', n: 9, cx: 40, cz: -120, y: 88, rx: 120, rz: 90, speed: 0.066, phase: 4.4 },
   ];
   const singles = [
     { kind: 'stork', y: 170 },
@@ -140,13 +140,13 @@ export function createFlocks(scene) {
       }
       // mild alignment with flock tangent
       const a = f.phase + t * f.speed;
-      acc.x += -Math.sin(a) * 6;
-      acc.z += Math.cos(a) * 6;
+      acc.x += -Math.sin(a) * 2;
+      acc.z += Math.cos(a) * 2;
       b.vel.addScaledVector(acc, dt);
       const maxS = b.kind.speed * (0.85 + (i % 5) * 0.04);
       const sp = b.vel.length();
       if (sp > maxS) b.vel.multiplyScalar(maxS / sp);
-      if (sp < 6) b.vel.multiplyScalar(6 / Math.max(sp, 0.01));
+      if (sp < 2) b.vel.multiplyScalar(2 / Math.max(sp, 0.01));
     }
   }
 
@@ -155,7 +155,7 @@ export function createFlocks(scene) {
     const wz = 20 + Math.sin(t * 0.09 + b.wander * 1.3) * 200;
     const wy = b.homeY + Math.sin(t * 0.4 + b.wander) * 16;
     tmp.set(wx, wy, wz).sub(b.wrapper.position).multiplyScalar(0.28);
-    b.vel.addScaledVector(tmp, dt * 8);
+    b.vel.addScaledVector(tmp, dt * 2.6);
     const maxS = b.kind.speed * 0.9;
     const sp = b.vel.length();
     if (sp > maxS) b.vel.multiplyScalar(maxS / sp);
@@ -166,7 +166,7 @@ export function createFlocks(scene) {
     if (b.vel.lengthSq() > 0.01) {
       const yaw = Math.atan2(b.vel.x, b.vel.z);
       b.wrapper.rotation.y = yaw;
-      const bank = THREE.MathUtils.clamp(-b.vel.x * 0.02, -0.45, 0.45);
+      const bank = THREE.MathUtils.clamp(-b.vel.x * 0.03, -0.28, 0.28);
       b.wrapper.rotation.z = THREE.MathUtils.lerp(b.wrapper.rotation.z, bank, 0.12);
       const pitch = THREE.MathUtils.clamp(-b.vel.y * 0.04, -0.35, 0.35);
       b.wrapper.rotation.x = THREE.MathUtils.lerp(b.wrapper.rotation.x, pitch, 0.12);

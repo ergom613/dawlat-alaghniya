@@ -1,13 +1,12 @@
 // Preview-only wedding square: plaza, dabke circle, spatial playlist, follow camera.
 import * as THREE from 'three';
+import { createDabkeCrowd, DANCE_RINGS } from './dabkeCrowd.js';
 
 const PLAZA = { x: 216, z: -144 };
-const PLAZA_SIZE = 36;
+const PLAZA_SIZE = 68;
 const ROAD_TO = { x: 222.1, z: -137.2 };
-const RING_R = 6.55;
-const DANCERS = 10;
-const SILENT_BEYOND = 90;
-const FULL_WITHIN = 22;
+const SILENT_BEYOND = 120;
+const FULL_WITHIN = 32;
 
 function gy(fn, x, z) {
   return typeof fn === 'function' ? fn(x, z) : 2.6;
@@ -26,40 +25,6 @@ function volumeForDist(d, silentBeyond, fullWithin) {
 
 function makeMat(color, opts = {}) {
   return new THREE.MeshLambertMaterial({ color, ...opts });
-}
-
-function makePerson(i) {
-  const g = new THREE.Group();
-  const skins = [0xd4a574, 0xc68642, 0xe0ac7e, 0xb07a4a, 0xe8c4a0];
-  const clothes = [0x8b1e1e, 0xc9a227, 0x1f6b4a, 0xf2efe6, 0x3b2a1a, 0xb43c6e, 0x2c4c8c, 0xd8b15a, 0x6b1d3a, 0xeee3c8];
-  const skin = makeMat(skins[i % skins.length]);
-  const cloth = makeMat(clothes[i % clothes.length]);
-  const dark = makeMat(0x2a2018);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), skin);
-  head.position.y = 1.46;
-  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.23, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.55), dark);
-  hair.position.y = 1.55;
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.72, 0.3), cloth);
-  torso.position.y = 0.96;
-  const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.42, 0.55, 8), cloth);
-  skirt.position.y = 0.48;
-  skirt.visible = i % 2 === 0;
-  const legG = new THREE.BoxGeometry(0.14, 0.55, 0.16);
-  const legL = new THREE.Mesh(legG, i % 2 === 0 ? cloth : dark);
-  const legR = new THREE.Mesh(legG, i % 2 === 0 ? cloth : dark);
-  legL.position.set(-0.12, 0.28, 0);
-  legR.position.set(0.12, 0.28, 0);
-  const armG = new THREE.BoxGeometry(2.28, 0.1, 0.1);
-  const arms = new THREE.Mesh(armG, skin);
-  arms.position.y = 1.16;
-  arms.name = 'arms';
-  const handL = new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 5), skin);
-  const handR = new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 5), skin);
-  handL.position.set(-1.16, 1.16, 0);
-  handR.position.set(1.16, 1.16, 0);
-  g.add(head, hair, torso, skirt, legL, legR, arms, handL, handR);
-  g.userData = { phase: i * 0.62, legL, legR, arms };
-  return g;
 }
 
 function makeStringLights(y0) {
@@ -115,21 +80,22 @@ function makePlaza(groundFn) {
   ground.position.y = 0.1;
   group.add(ground);
 
-  const ring = new THREE.Mesh(
-    new THREE.RingGeometry(6.2, 8.6, 48),
-    makeMat(0x6e2a28),
-  );
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.y = 0.3;
-  group.add(ring);
-
   const inner = new THREE.Mesh(
-    new THREE.CircleGeometry(6.2, 32),
+    new THREE.CircleGeometry(5.6, 40),
     makeMat(0xb9a27a),
   );
   inner.rotation.x = -Math.PI / 2;
   inner.position.y = 0.29;
   group.add(inner);
+  for (const rg of DANCE_RINGS) {
+    const band = new THREE.Mesh(
+      new THREE.RingGeometry(rg.r - 0.85, rg.r + 0.85, 64),
+      makeMat(0x6e2a28),
+    );
+    band.rotation.x = -Math.PI / 2;
+    band.position.y = 0.3;
+    group.add(band);
+  }
 
   // curb
   const curb = new THREE.Mesh(
@@ -154,37 +120,37 @@ function makePlaza(groundFn) {
 
   // small stage on the north side
   const stage = new THREE.Mesh(new THREE.BoxGeometry(10, 0.7, 5.2), makeMat(0x5a3a22));
-  stage.position.set(0, 0.55, -13.2);
+  stage.position.set(0, 0.55, -PLAZA_SIZE * 0.36);
   group.add(stage);
   const back = new THREE.Mesh(new THREE.BoxGeometry(10.2, 4.2, 0.35), makeMat(0x7a1f2b));
-  back.position.set(0, 2.6, -15.6);
+  back.position.set(0, 2.6, -PLAZA_SIZE * 0.36 - 2.4);
   group.add(back);
   const goldTrim = new THREE.Mesh(new THREE.BoxGeometry(10.4, 0.25, 0.4), makeMat(0xe0b84a));
-  goldTrim.position.set(0, 4.7, -15.6);
+  goldTrim.position.set(0, 4.7, -PLAZA_SIZE * 0.36 - 2.4);
   group.add(goldTrim);
   // speakers
   const spkMat = makeMat(0x222018);
   for (const sx of [-4.2, 4.2]) {
     const sp = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.8, 0.9), spkMat);
-    sp.position.set(sx, 1.5, -13.4);
+    sp.position.set(sx, 1.5, -PLAZA_SIZE * 0.36 - 0.2);
     group.add(sp);
   }
 
   // festive posts / bunting poles already in lights
   const lights = makeStringLights(y);
   group.add(lights);
-  const fillLight = new THREE.PointLight(0xffd6a8, 0.2, 48, 1.4);
+  const fillLight = new THREE.PointLight(0xffd6a8, 0.35, 80, 1.4);
   fillLight.position.set(0, 7.2, 0);
   group.add(fillLight);
   const stageLight = new THREE.PointLight(0xffc978, 0.15, 28, 1.6);
-  stageLight.position.set(0, 5.2, -12);
+  stageLight.position.set(0, 5.2, -PLAZA_SIZE * 0.36 + 1);
   group.add(stageLight);
   group.userData.fillLight = fillLight;
   group.userData.stageLight = stageLight;
 
   // wooden sign
   const post = new THREE.Mesh(new THREE.BoxGeometry(0.18, 2.4, 0.18), makeMat(0x4a3218));
-  post.position.set(0, 1.3, 16.2);
+  post.position.set(0, 1.3, PLAZA_SIZE * 0.42);
   group.add(post);
   const canvas = document.createElement('canvas');
   canvas.width = 512; canvas.height = 192;
@@ -206,7 +172,7 @@ function makePlaza(groundFn) {
     new THREE.PlaneGeometry(4.6, 1.7),
     new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }),
   );
-  sign.position.set(0, 2.6, 16.2);
+  sign.position.set(0, 2.6, PLAZA_SIZE * 0.42);
   group.add(sign);
 
   return { group, lights, y };
@@ -216,19 +182,9 @@ export function createWedding({ scene, camera, controls, groundY, getTour }) {
   const { group, lights, y: baseY } = makePlaza(groundY);
   scene.add(group);
 
-  const ring = new THREE.Group();
-  ring.name = 'dabkeRing';
-  ring.position.y = 0.3;
-  group.add(ring);
-  const people = [];
-  for (let i = 0; i < DANCERS; i++) {
-    const p = makePerson(i);
-    const a = (i / DANCERS) * Math.PI * 2;
-    p.position.set(Math.cos(a) * RING_R, 0, Math.sin(a) * RING_R);
-    p.rotation.y = a + Math.PI / 2;
-    ring.add(p);
-    people.push(p);
-  }
+  const crowd = createDabkeCrowd(PLAZA.x, PLAZA.z);
+  crowd.group.position.y = 0.3;
+  group.add(crowd.group);
 
   const center = new THREE.Vector3(PLAZA.x, baseY + 1.4, PLAZA.z);
   let camOn = false;
@@ -244,7 +200,7 @@ export function createWedding({ scene, camera, controls, groundY, getTour }) {
   let night = 0;
 
   const ui = {
-    bar: document.getElementById('weddingBar'),
+    bar: document.getElementById('publicDock') || document.getElementById('dock'),
     btnCam: document.getElementById('btnWeddingCam'),
     btnSound: document.getElementById('btnWeddingSound'),
     btnPrev: document.getElementById('btnWeddingPrev'),
@@ -450,8 +406,8 @@ export function createWedding({ scene, camera, controls, groundY, getTour }) {
     const cx = PLAZA.x + Math.sin(camAng * 0.35) * sway;
     const cz = PLAZA.z + Math.cos(camAng * 0.28) * sway;
     const lookY = baseY + 1.35;
-    const rad = 15.5;
-    const h = baseY + 6.4;
+    const rad = 24.5;
+    const h = baseY + 7.2;
     camera.position.set(
       cx + Math.cos(camAng) * rad,
       h,
@@ -463,25 +419,13 @@ export function createWedding({ scene, camera, controls, groundY, getTour }) {
   }
 
   function updateDancers(dt, t) {
-    // the whole ring slowly turns (dabke circle)
-    ring.rotation.y += (dt || 0.016) * 0.55;
     const time = t != null ? t : performance.now() / 1000;
-    for (let i = 0; i < people.length; i++) {
-      const p = people[i];
-      const bob = Math.sin(time * 7.2 + p.userData.phase) * 0.11;
-      p.position.y = Math.max(0, bob);
-      const kick = Math.sin(time * 7.2 + p.userData.phase + 0.6);
-      if (p.userData.legL) p.userData.legL.rotation.x = kick * 0.45;
-      if (p.userData.legR) p.userData.legR.rotation.x = -kick * 0.35;
-    }
-    // keep world center in sync with slight sway used by camera
+    crowd.update(dt, time, camera);
     center.set(
-      PLAZA.x + Math.sin((time) * 0.32) * 0.15,
+      PLAZA.x + Math.sin(time * 0.32) * 0.15,
       baseY + 1.4,
-      PLAZA.z + Math.cos((time) * 0.25) * 0.15,
+      PLAZA.z + Math.cos(time * 0.25) * 0.15,
     );
-    ring.position.x = center.x - PLAZA.x;
-    ring.position.z = center.z - PLAZA.z;
   }
 
   function setNight(n) {
@@ -515,7 +459,7 @@ export function createWedding({ scene, camera, controls, groundY, getTour }) {
     const arm = () => { if (camOn) armed = true; };
     const maybeExit = (ev) => {
       if (!camOn || !armed) return;
-      if (ev && ev.target && ev.target.closest && ev.target.closest('#weddingBar, #weddingBack, #ytWeddingWrap')) return;
+      if (ev && ev.target && ev.target.closest && ev.target.closest('#dock, #bottomStack, #weddingBack, #ytWeddingWrap, #ownerPanel')) return;
       exitCam();
       armed = false;
     };
@@ -556,5 +500,6 @@ export function createWedding({ scene, camera, controls, groundY, getTour }) {
     getIndex: () => index,
     getTrack: track,
     getCenter: () => center.clone(),
+    getCrowdCount: () => crowd.count,
   };
 }

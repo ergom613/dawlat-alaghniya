@@ -8,7 +8,7 @@ export const STREET_W = 12;
 export const CELL = LOT * 2 + STREET_W; // 60
 export const ORIGIN = { x: 10, z: 35 };
 export const HOME = { x: 160, z: 65 };
-export const PLAZA = { x: 216, z: -144, r: 36 };
+export const PLAZA = { x: 216, z: -144, r: 48 };
 
 const LOT_OFF = [LOT * 0.5, LOT + LOT * 0.5]; // 12, 36
 
