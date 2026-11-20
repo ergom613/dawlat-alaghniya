@@ -5,6 +5,7 @@ import { makeLabelLayer } from './labels.js';
 import { createDayNight, createLamps } from './sky.js';
 import { createHorizonMountains, createBirds } from './scenery.js';
 import { createCelebrations, highestMilestone } from './celebrate.js';
+import { createTour } from './tour.js';
 import { buildResidents } from './plots.js';
 import { initOwner } from './owner.js';
 import { createCrowd } from './crowd.js';
@@ -68,7 +69,7 @@ let currentSeed = START_SEED;
 let demo = { active: RECORD, t: 0 };
 let badgeEl, searchInput, levelSlider, levelLabel, foundMsg;
 let hemiLight, sunLight, fillLight, skyMesh;
-let dayNight = null, lamps = null, crowd = null, birds = null, celebrations = null;
+let dayNight = null, lamps = null, crowd = null, birds = null, celebrations = null, tour = null;
 let allResidents = [];
 let selectedResident = null;
 let plotTents = []; // full procedural tents + tags for real residents (not the selected hero)
@@ -647,6 +648,7 @@ function setCamMode(mode, instant = false) {
 }
 
 function cycleCamMode() {
+  if (tour && tour.pause) tour.pause();
   let i = CAM_CYCLE.indexOf(camMode);
   for (let k = 0; k < CAM_CYCLE.length; k++) {
     i = (i + 1) % CAM_CYCLE.length;
@@ -692,6 +694,7 @@ function smooth(t) {
 }
 
 function setCameraView(view, instant = false) {
+  if (tour && tour.pause) tour.pause();
   if (view === 'overview' || view === 'free') setCamMode('free', true);
   if (view === 'house' || view === 'yacht' || view === 'car') {
     setCamMode(view === 'house' ? 'house' : view, instant);
@@ -809,6 +812,7 @@ function searchResident(q) {
     found = selectedResident || { name: RESIDENT.name, seed: currentSeed, level: currentLevel, x: currentPlot().x, z: currentPlot().z, i: 0, example: true };
   }
   if (found) {
+    if (tour && tour.pause) tour.pause();
     selectResident(found, true);
     if (foundMsg) {
       foundMsg.textContent = found.example ? (`لقينا بيت ${publicLabel(found)} (مثال)`) : (`لقينا ${publicLabel(found)}`);
@@ -1951,7 +1955,8 @@ function loop() {
   lastTick = now;
   if (!RECORD) {
     updateFly(now);
-    if (!fly && camMode === 'free') controls.update();
+    if (tour && MODE === 'map') tour.tick(dt, !!fly);
+    if (!fly && camMode === 'free' && !(tour && tour.isActive())) controls.update();
     renderFrame(clock.getElapsedTime(), dt);
     if (DEMO_N > 1) {
       fpsFrames += 1;
@@ -2200,6 +2205,12 @@ async function main() {
       getHouses: celebrationHouses,
       labelLayer: () => labelLayer,
     });
+    tour = createTour({
+      camera,
+      controls,
+      getHouses: celebrationHouses,
+      groundY,
+    });
   }
 
   if (!RECORD && MODE === 'map') {
@@ -2292,6 +2303,7 @@ async function main() {
     exampleNames: EXAMPLE_NAMES,
     scene, camera, renderer, controls,
     celebrations,
+    tour,
 
     cullHouseLabels,
     debugLabels: () => {
