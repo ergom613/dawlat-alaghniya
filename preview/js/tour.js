@@ -1,8 +1,8 @@
 // Public roaming tour: a slow cinematic glide over the city.
-// Pauses on touch / drag / scroll / search, resumes after ~15s idle.
+// Pauses on touch / drag / scroll / search, resumes after 60s idle (no snap-back sooner).
 import * as THREE from 'three';
 
-const IDLE_MS = 15000;
+const IDLE_MS = 60000;
 const RESUME_S = 2.6;
 const MIN_CAM_Y = 16;
 

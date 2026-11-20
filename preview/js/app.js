@@ -9,6 +9,7 @@ import { createTour } from './tour.js';
 import { buildResidents } from './plots.js';
 import { initOwner } from './owner.js';
 import { createCrowd } from './crowd.js';
+import { createWedding } from './wedding.js';
 import { loadTerrain, getHeight, buildTerrainMesh, terrainAttribution, LAND_H } from './terrain.js';
 
 const params = new URLSearchParams(location.search);
@@ -69,7 +70,7 @@ let currentSeed = START_SEED;
 let demo = { active: RECORD, t: 0 };
 let badgeEl, searchInput, levelSlider, levelLabel, foundMsg;
 let hemiLight, sunLight, fillLight, skyMesh;
-let dayNight = null, lamps = null, crowd = null, birds = null, celebrations = null, tour = null;
+let dayNight = null, lamps = null, crowd = null, birds = null, celebrations = null, tour = null, wedding = null;
 let allResidents = [];
 let selectedResident = null;
 let plotTents = []; // full procedural tents + tags for real residents (not the selected hero)
@@ -691,6 +692,172 @@ function lerpV(a, b, t) {
 
 function smooth(t) {
   return t * t * (3 - 2 * t);
+}
+
+
+const CAM_BOUNDS = { minX: -2000, maxX: 2000, minZ: -2200, maxZ: 2200 };
+
+function clampFreeCamera() {
+  if (!camera || !controls) return;
+  if (camMode !== 'free') return;
+  if (wedding && wedding.isCam()) return;
+  const t = controls.target;
+  t.x = Math.max(CAM_BOUNDS.minX, Math.min(CAM_BOUNDS.maxX, t.x));
+  t.z = Math.max(CAM_BOUNDS.minZ, Math.min(CAM_BOUNDS.maxZ, t.z));
+  const tgtMin = (typeof groundY === 'function' ? groundY(t.x, t.z) : 2.6) + 1.0;
+  if (t.y < tgtMin) t.y = tgtMin;
+  const c = camera.position;
+  c.x = Math.max(CAM_BOUNDS.minX - 500, Math.min(CAM_BOUNDS.maxX + 500, c.x));
+  c.z = Math.max(CAM_BOUNDS.minZ - 500, Math.min(CAM_BOUNDS.maxZ + 500, c.z));
+  const camMin = (typeof groundY === 'function' ? groundY(c.x, c.z) : 2.6) + 8;
+  if (c.y < camMin) c.y = camMin;
+}
+
+let tapRipple = null;
+let tapRippleAge = 0;
+const TAP_RIPPLE_DUR = 0.95;
+
+function ensureTapRipple() {
+  if (tapRipple) return tapRipple;
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(0.35, 0.7, 40),
+    new THREE.MeshBasicMaterial({
+      color: 0xffe08a,
+      transparent: true,
+      opacity: 0.9,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    }),
+  );
+  ring.rotation.x = -Math.PI / 2;
+  const disc = new THREE.Mesh(
+    new THREE.CircleGeometry(0.28, 24),
+    new THREE.MeshBasicMaterial({
+      color: 0xfff6df,
+      transparent: true,
+      opacity: 0.55,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    }),
+  );
+  disc.rotation.x = -Math.PI / 2;
+  disc.position.y = 0.01;
+  const g = new THREE.Group();
+  g.add(ring, disc);
+  g.visible = false;
+  g.userData.ring = ring;
+  g.userData.disc = disc;
+  scene.add(g);
+  tapRipple = g;
+  return g;
+}
+
+function showTapRipple(x, y, z) {
+  const g = ensureTapRipple();
+  g.position.set(x, y, z);
+  g.scale.set(1, 1, 1);
+  g.visible = true;
+  g.userData.ring.material.opacity = 0.95;
+  g.userData.disc.material.opacity = 0.55;
+  tapRippleAge = 0;
+}
+
+function tickTapRipple(dt) {
+  if (!tapRipple || !tapRipple.visible) return;
+  tapRippleAge += Math.max(0, dt || 0.016);
+  const u = Math.min(1, tapRippleAge / TAP_RIPPLE_DUR);
+  const s = 1 + u * 3.2;
+  tapRipple.scale.set(s, 1, s);
+  tapRipple.userData.ring.material.opacity = 0.95 * (1 - u);
+  tapRipple.userData.disc.material.opacity = 0.55 * (1 - u) * (1 - u);
+  if (u >= 1) tapRipple.visible = false;
+}
+
+function pickGround(clientX, clientY) {
+  if (!camera || !renderer) return null;
+  const rect = renderer.domElement.getBoundingClientRect();
+  const w = rect.width || 1, h = rect.height || 1;
+  const mouse = new THREE.Vector2(
+    ((clientX - rect.left) / w) * 2 - 1,
+    -((clientY - rect.top) / h) * 2 + 1,
+  );
+  const ray = new THREE.Raycaster();
+  ray.setFromCamera(mouse, camera);
+  if (mapRoot) {
+    const hits = ray.intersectObject(mapRoot, true);
+    if (hits && hits.length) {
+      const p = hits[0].point;
+      return { x: p.x, z: p.z, y: groundY(p.x, p.z) };
+    }
+  }
+  const hit = new THREE.Vector3();
+  const guessY = (controls && controls.target) ? controls.target.y : 0;
+  const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -guessY);
+  if (ray.ray.intersectPlane(plane, hit)) {
+    return { x: hit.x, z: hit.z, y: groundY(hit.x, hit.z) };
+  }
+  plane.constant = 0;
+  if (ray.ray.intersectPlane(plane, hit)) {
+    return { x: hit.x, z: hit.z, y: groundY(hit.x, hit.z) };
+  }
+  return null;
+}
+
+function flyToPoint(x, z, dur = 0.9) {
+  if (!camera || !controls) return;
+  if (tour && tour.pause) tour.pause();
+  setCamMode('free', true);
+  const gy = groundY(x, z);
+  const toT = new THREE.Vector3(x, gy + 1.2, z);
+  const offset = camera.position.clone().sub(controls.target);
+  const toP = toT.clone().add(offset);
+  const camMin = groundY(toP.x, toP.z) + 8;
+  if (toP.y < camMin) toP.y = camMin;
+  toP.x = Math.max(CAM_BOUNDS.minX - 500, Math.min(CAM_BOUNDS.maxX + 500, toP.x));
+  toP.z = Math.max(CAM_BOUNDS.minZ - 500, Math.min(CAM_BOUNDS.maxZ + 500, toP.z));
+  toT.x = Math.max(CAM_BOUNDS.minX, Math.min(CAM_BOUNDS.maxX, toT.x));
+  toT.z = Math.max(CAM_BOUNDS.minZ, Math.min(CAM_BOUNDS.maxZ, toT.z));
+  flyTo(toP, toT, dur);
+  showTapRipple(toT.x, gy + 0.18, toT.z);
+}
+
+function bindTapToFly() {
+  const canvas = renderer && renderer.domElement;
+  if (!canvas || canvas.__tapToFlyBound) return;
+  canvas.__tapToFlyBound = true;
+  const pointers = new Set();
+  let tap = null;
+  let skipBecauseWedding = false;
+  const THRESH = 10;
+  canvas.addEventListener('pointerdown', (e) => {
+    pointers.add(e.pointerId);
+    if (pointers.size > 1) { tap = null; return; }
+    skipBecauseWedding = !!(wedding && wedding.isCam());
+    tap = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), dragged: false };
+  }, { passive: true });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!tap || e.pointerId !== tap.id) return;
+    if (Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > THRESH) tap.dragged = true;
+  }, { passive: true });
+  function endPointer(e) {
+    pointers.delete(e.pointerId);
+    const rec = tap;
+    if (!rec || e.pointerId !== rec.id) {
+      if (pointers.size === 0) tap = null;
+      return;
+    }
+    tap = null;
+    if (skipBecauseWedding) return; // wedding cam consumes this tap as an exit
+    if (rec.dragged) return;
+    if (performance.now() - rec.t > 450) return;
+    if (camMode !== 'free') return;
+    if (MODE !== 'map' || RECORD) return;
+    const hit = pickGround(rec.x, rec.y);
+    if (!hit) return;
+    flyToPoint(hit.x, hit.z);
+  }
+  canvas.addEventListener('pointerup', endPointer, { passive: true });
+  canvas.addEventListener('pointercancel', endPointer, { passive: true });
 }
 
 function setCameraView(view, instant = false) {
@@ -1807,6 +1974,7 @@ function renderFrame(timeSec, dt) {
   if (waterUniforms) waterUniforms.uTime.value = timeSec;
   if (!RECORD && birds) birds.tick(timeSec, lastSky.night);
   if (!RECORD && celebrations) celebrations.tick(timeSec, dt || 0, lastSky.night);
+  if (!RECORD && wedding) wedding.update(dt || 0, lastSky.night, timeSec);
   if (yachtObj && yachtObj.group.visible && yachtObj.tick) yachtObj.tick(timeSec);
   if (house && house.group.visible) {
     house.tick(timeSec);
@@ -1864,9 +2032,25 @@ function initRenderer() {
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = !RECORD;
   controls.dampingFactor = 0.08;
-  controls.maxPolarAngle = Math.PI * 0.48;
-  controls.minDistance = 10;
-  controls.maxDistance = 9000;
+  controls.screenSpacePanning = false; // pan in the ground plane
+  controls.enablePan = true;
+  controls.enableRotate = true;
+  controls.enableZoom = true;
+  controls.minDistance = 6;
+  controls.maxDistance = 12000;
+  controls.minPolarAngle = 0.08;
+  controls.maxPolarAngle = Math.PI * 0.495;
+  controls.zoomSpeed = 1.15;
+  controls.panSpeed = 1.05;
+  controls.rotateSpeed = 0.72;
+  {
+    const MOUSE = THREE.MOUSE || { ROTATE: 0, DOLLY: 1, PAN: 2 };
+    const TOUCH = THREE.TOUCH || { ROTATE: 0, PAN: 1, DOLLY_PAN: 2, DOLLY_ROTATE: 3 };
+    // Map-style: 1-finger / left-drag pans, pinch zooms, 2-finger / right-drag rotates+tilts.
+    controls.mouseButtons = { LEFT: MOUSE.PAN, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.ROTATE };
+    controls.touches = { ONE: TOUCH.PAN, TWO: TOUCH.DOLLY_ROTATE };
+  }
+  if (typeof controls.listenToKeyEvents === 'function') controls.listenToKeyEvents(window);
   controls.target.set(120, groundY(120, 50) + 8, 50);
 
   hemiLight = new THREE.HemisphereLight(0xfff2d8, 0x7a9a6a, 0.95);
@@ -1947,6 +2131,7 @@ function bindHUD() {
   }
   updateStats();
   applyLevel(currentLevel, false);
+  bindTapToFly();
 }
 
 function loop() {
@@ -1955,8 +2140,12 @@ function loop() {
   lastTick = now;
   if (!RECORD) {
     updateFly(now);
-    if (tour && MODE === 'map') tour.tick(dt, !!fly);
-    if (!fly && camMode === 'free' && !(tour && tour.isActive())) controls.update();
+    if (tour && MODE === 'map' && !(wedding && wedding.isCam())) tour.tick(dt, !!fly);
+    if (!fly && camMode === 'free' && !(tour && tour.isActive()) && !(wedding && wedding.isCam())) {
+      controls.update();
+      clampFreeCamera();
+    }
+    tickTapRipple(dt);
     renderFrame(clock.getElapsedTime(), dt);
     if (DEMO_N > 1) {
       fpsFrames += 1;
@@ -2141,6 +2330,10 @@ async function main() {
     });
     lamps = createLamps(scene, data, groundY);
     birds = createBirds(scene);
+    wedding = createWedding({
+      scene, camera, controls, groundY,
+      getTour: () => tour,
+    });
     const built = buildResidents(data, fileRes.residents || [], DEMO_N > 1 ? DEMO_N : 0);
     allResidents = built.residents;
     const first = allResidents[0] || { id: 1, name: 'بيت رقم 1', label: 'بيت رقم 1', seed: 'house_1', level: 1, x: plot.x, z: plot.z, i: 0, anonymous: true };
@@ -2266,6 +2459,7 @@ async function main() {
       }
       if (crowd && crowd.setNight) crowd.setNight(lastSky.night);
       if (birds) birds.tick(0, lastSky.night);
+      if (wedding && wedding.setNight) wedding.setNight(lastSky.night);
       return lastSky;
     },
     getFps: () => lastFps,
@@ -2304,6 +2498,12 @@ async function main() {
     scene, camera, renderer, controls,
     celebrations,
     tour,
+    wedding,
+    flyToPoint,
+    enterWeddingCam: () => wedding && wedding.enterCam(),
+    exitWeddingCam: () => wedding && wedding.exitCam(),
+    isWeddingCam: () => !!(wedding && wedding.isCam()),
+    getWeddingCenter: () => wedding && wedding.getCenter(),
 
     cullHouseLabels,
     debugLabels: () => {
