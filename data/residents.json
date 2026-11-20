@@ -428,6 +428,50 @@
    "seed": "k1731970",
    "x": 72,
    "z": 72
+  },
+  {
+   "id": 40,
+   "name": "mahdialali84",
+   "label": "بيت رقم 40",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "mahdialali84",
+   "x": 72,
+   "z": 48
+  },
+  {
+   "id": 41,
+   "name": "asdfghj84602",
+   "label": "بيت رقم 41",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "asdfghj84602",
+   "x": 72,
+   "z": 96
+  },
+  {
+   "id": 42,
+   "name": "lslm_tqw",
+   "label": "بيت رقم 42",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "lslm_tqw",
+   "x": 240,
+   "z": 120
+  },
+  {
+   "id": 43,
+   "name": "hsnjmyl168",
+   "label": "بيت رقم 43",
+   "anonymous": false,
+   "owner": false,
+   "level": 1,
+   "seed": "hsnjmyl168",
+   "x": 240,
+   "z": 24
   }
  ]
 }
