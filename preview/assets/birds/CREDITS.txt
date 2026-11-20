@@ -1,0 +1,19 @@
+Flock birds used on the preview map — all free to use.
+
+1. Parrot.glb — three.js examples (ROME / mirada)
+   License: MIT
+   https://github.com/mrdoob/three.js/blob/r187/examples/models/gltf/Parrot.glb
+   Used in the village project (v2) as bird_flyer.
+
+2. Stork.glb — three.js examples (ROME / mirada)
+   License: MIT
+   https://github.com/mrdoob/three.js/blob/r187/examples/models/gltf/Stork.glb
+   Used in the village project (v2 and v3).
+
+3. Low-poly pigeon (flying) — hedaytul333
+   License: CC-BY 4.0 (attribution required)
+   https://sketchfab.com/3d-models/low-poly-pigeon-79de3c5b47f24376a5694029b1693088
+   Uncompressed copy of the village v3 flying pigeon.
+   Credit: "Low-poly pigeon" by hedaytul333, CC-BY 4.0.
+
+The restricted Sketchfab / Fab "flock" model is NOT used.

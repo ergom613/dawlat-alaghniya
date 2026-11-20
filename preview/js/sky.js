@@ -134,6 +134,8 @@ export function createDayNight(ctx) {
       return mode;
     },
     setAutoTod(t) { autoTod = t; },
+    getSunPosition() { return sunMesh.position; },
+    getMoonPosition() { return moonMesh.position; },
     update(dt, forcedTod) {
       const tod = resolveTod(forcedTod, dt);
       return apply(tod);

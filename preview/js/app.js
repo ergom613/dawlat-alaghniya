@@ -3,7 +3,9 @@ import { OrbitControls } from '../vendor/OrbitControls.js';
 import { createHouse, createNameSprite, pointsToLevel, createYacht, heightForLevel, styleFromName, yachtLengthForLevel } from './house.js';
 import { makeLabelLayer } from './labels.js';
 import { createDayNight, createLamps } from './sky.js';
-import { createHorizonMountains, createBirds } from './scenery.js';
+import { createHorizonMountains } from './scenery.js';
+import { createFlocks } from './flocks.js';
+import { createWeather, WEATHER_AR } from './weather.js';
 import { createCelebrations, highestMilestone } from './celebrate.js';
 import { createTour } from './tour.js';
 import { buildResidents } from './plots.js';
@@ -70,7 +72,7 @@ let currentSeed = START_SEED;
 let demo = { active: RECORD, t: 0 };
 let badgeEl, searchInput, levelSlider, levelLabel, foundMsg;
 let hemiLight, sunLight, fillLight, skyMesh;
-let dayNight = null, lamps = null, crowd = null, birds = null, celebrations = null, tour = null, wedding = null;
+let dayNight = null, lamps = null, crowd = null, birds = null, weather = null, celebrations = null, tour = null, wedding = null;
 let allResidents = [];
 let selectedResident = null;
 let plotTents = []; // full procedural tents + tags for real residents (not the selected hero)
@@ -1972,7 +1974,12 @@ function renderFrame(timeSec, dt) {
     if (crowd && crowd.setNight) crowd.setNight(lastSky.night);
   }
   if (waterUniforms) waterUniforms.uTime.value = timeSec;
-  if (!RECORD && birds) birds.tick(timeSec, lastSky.night);
+  if (!RECORD && weather) {
+    weather.update(dt || 0, timeSec, {
+      hemi: hemiLight, sun: sunLight, fill: fillLight, fog: scene.fog, renderer,
+    });
+  }
+  if (!RECORD && birds) birds.tick(timeSec, dt || 0.016, lastSky.night);
   if (!RECORD && celebrations) celebrations.tick(timeSec, dt || 0, lastSky.night);
   if (!RECORD && wedding) wedding.update(dt || 0, lastSky.night, timeSec);
   if (yachtObj && yachtObj.group.visible && yachtObj.tick) yachtObj.tick(timeSec);
@@ -2127,6 +2134,16 @@ function bindHUD() {
       const m = dayNight.cycleMode();
       const lab = $('skyModeLabel');
       if (lab) lab.textContent = SKY_AR[m] || m;
+    });
+  }
+  const bw = $('btnWeather');
+  if (bw) {
+    const lab = $('weatherModeLabel');
+    if (lab && weather) lab.textContent = WEATHER_AR[weather.getMode()] || 'تلقائي';
+    bw.addEventListener('click', () => {
+      if (!weather) return;
+      const m = weather.cycleMode();
+      if (lab) lab.textContent = WEATHER_AR[m] || m;
     });
   }
   updateStats();
@@ -2329,7 +2346,12 @@ async function main() {
       sky: skyMesh, fog: scene.fog, waterUniforms,
     });
     lamps = createLamps(scene, data, groundY);
-    birds = createBirds(scene);
+    birds = createFlocks(scene);
+    weather = createWeather({
+      scene, groundY,
+      getResidents: () => allResidents,
+      getSunPosition: () => dayNight && dayNight.getSunPosition && dayNight.getSunPosition(),
+    });
     wedding = createWedding({
       scene, camera, controls, groundY,
       getTour: () => tour,
@@ -2354,6 +2376,7 @@ async function main() {
     selectedResident = first;
     applyHouseLabel();
     if (allResidents.length > 1 && DEMO_N <= 1) placePlotTents();
+    if (weather && weather.rebuildRoofs) weather.rebuildRoofs(allResidents);
     if (PROMO && PROMO_VER !== 4 && !crowd) {
       const fill = buildResidents(data, [], 10000);
       crowd = createCrowd(scene, fill.residents, data);
@@ -2427,6 +2450,7 @@ async function main() {
         rec.i = allResidents.length;
         allResidents.push(rec);
         placePlotTents();
+        if (weather && weather.rebuildRoofs) weather.rebuildRoofs(allResidents);
         updateStats();
         if (celebrations && celebrations.resetScan) celebrations.resetScan();
         if (rec.name) searchResident(rec.name);
@@ -2449,6 +2473,10 @@ async function main() {
     setCamMode: (m, instant) => setCamMode(m, instant !== false),
     cycleCam: cycleCamMode,
     setSkyMode: (m) => { if (dayNight) { dayNight.setMode(m); } },
+    setWeather: (m) => weather && weather.setMode(m),
+    getWeather: () => weather && weather.getMode(),
+    getWeatherKind: () => weather && weather.getKind(),
+    weather,
     setTod: (t) => {
       if (!dayNight) return lastSky;
       lastSky = dayNight.update(0, t);
@@ -2458,7 +2486,8 @@ async function main() {
         if (item.house && item.house.setNightFactor) item.house.setNightFactor(lastSky.night);
       }
       if (crowd && crowd.setNight) crowd.setNight(lastSky.night);
-      if (birds) birds.tick(0, lastSky.night);
+      if (birds) birds.tick(0, 0.016, lastSky.night);
+      if (weather) weather.update(0, 0, { hemi: hemiLight, sun: sunLight, fill: fillLight, fog: scene.fog, renderer });
       if (wedding && wedding.setNight) wedding.setNight(lastSky.night);
       return lastSky;
     },

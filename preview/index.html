@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="robots" content="noindex" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <base href="https://ergom613.github.io/dawlat-alaghniya/preview/" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>دولة الأغنياء — State of the Rich</title>
   <style>
     :root {
@@ -109,7 +109,7 @@
     .hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
     #tools {
       display: grid;
-      grid-template-columns: auto auto auto 1fr;
+      grid-template-columns: auto auto auto auto 1fr;
       gap: 8px;
       margin-top: 10px;
       align-items: stretch;
@@ -235,6 +235,10 @@
         <button class="btn tool col" id="btnSky" type="button" title="ليل ونهار">
           <span>الوقت</span>
           <span class="sub" id="skyModeLabel">تلقائي</span>
+        </button>
+        <button class="btn tool col owner-only" id="btnWeather" type="button" title="الطقس">
+          <span>الطقس</span>
+          <span class="sub" id="weatherModeLabel">تلقائي</span>
         </button>
         <button class="btn tool" id="btnOverview" type="button">الخريطة</button>
         <div id="seedWrap" class="owner-only">
