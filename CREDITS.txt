@@ -1,0 +1,54 @@
+دولة الأغنياء / State of the Rich — credits and licences
+=======================================================
+
+Map data
+--------
+© OpenStreetMap contributors
+License: Open Data Commons Open Database License (ODbL)
+https://www.openstreetmap.org/copyright
+
+Extract: Geofabrik “monaco-latest-free” shapefiles, dated 2026-11-19
+https://download.geofabrik.de/europe/monaco.html
+
+Administrative boundary: OpenStreetMap relation 36990 (Monaco),
+via polygons.openstreetmap.fr
+
+This project uses land, coastline/sea, harbour (Port Hercule,
+Port de Fontvieille, Port du Petit Portier), piers, roads,
+parks/greenery, beaches and trees. It does NOT use OSM building
+footprints. The only house on the map is the example follower house.
+
+3D house, cars and yacht
+------------------------
+The follower house (levels 1–30), parked cars, and harbour yacht
+are original procedural geometry built in code for this project.
+No third-party 3D model is used. Per-follower colours and shapes
+are derived from a hash of the username (deterministic, no assets).
+
+
+Land outline
+------------
+The land/sea outline around Monaco (and land-cover classes used to colour
+the flat ground) is derived from AWS Terrain Tiles in Mapzen Terrarium
+format, zoom 14. Elevation is disabled: the ground is a flat plane just
+above sea level, with no hills or mountains.
+
+This region is sourced from EU-DEM.
+Produced using Copernicus data and information funded by the European
+Union — EU-DEM layers.
+
+Tiles: https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png
+Attribution guide: https://github.com/tilezen/joerd/blob/master/docs/attribution.md
+
+EU-DEM / Copernicus data may be used, including commercially, with this
+attribution. The baked heightmap in data/terrain.bin is a derivative of
+that source, in this project’s metric map frame, and is used only as a
+land/sea mask.
+
+On-screen attribution
+---------------------
+The 3D page shows: © OpenStreetMap contributors · Land outline: EU-DEM / Copernicus
+
+Day/night lighting, street lamps, procedural cars/yacht, and instanced follower houses are original to this project.
+Map data © OpenStreetMap contributors (ODbL).
+Stress-test names are generated examples, not real people.
