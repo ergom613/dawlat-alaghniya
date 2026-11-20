@@ -1,12 +1,12 @@
 {
  "version": 1,
  "promo_launch": "2026-11-20T14:20:00+01:00",
- "last_check": "2026-11-20T16:45:00+01:00",
- "last_check_notes": "Check at 16:45 Europe/Berlin. Added 12 new Instagram followers from qissati.ai2026 (houses 26–37) and 2 new Facebook commenters (houses 38–39: Mila Ali, k1731970). Likers who did not follow were not given a house. rakan_tork received +1 like (now 1 like + 1 comment = 3 points, still level 1). ghkmbnmbw has 3 comments + 1 like = 7 points, level 2. hnoo_kassar stays at level 10 with 45 points (manual_bonus by owner 20.11 16:41); future engagement adds on top of that bonus. Total houses: 39. Scoring unchanged: like +1, comment +2, share +3, gift +5; level = 1 + floor(points/5), max 30. Scoring rule changed by the owner: every 50 points = +1 level (level = 1 + floor(points/50), max 30). Points themselves are unchanged. All houses were recomputed; ghkmbnmbw returns to level 1 (7 points). Only hnoo_kassar stays at level 10 as a manual owner bonus. Owner set house #1 (بيت رقم 1) to manual level 30 (never lowered) at 17:00 Europe/Berlin.",
+ "last_check": "2026-11-20T21:05:00+01:00",
+ "last_check_notes": "Check at 16:45 Europe/Berlin. Added 12 new Instagram followers from qissati.ai2026 (houses 26–37) and 2 new Facebook commenters (houses 38–39: Mila Ali, k1731970). Likers who did not follow were not given a house. rakan_tork received +1 like (now 1 like + 1 comment = 3 points, still level 1). ghkmbnmbw has 3 comments + 1 like = 7 points, level 2. hnoo_kassar stays at level 10 with 45 points (manual_bonus by owner 20.11 16:41); future engagement adds on top of that bonus. Total houses: 39. Scoring unchanged: like +1, comment +2, share +3, gift +5; level = 1 + floor(points/5), max 30. Scoring rule changed by the owner: every 50 points = +1 level (level = 1 + floor(points/50), max 30). Points themselves are unchanged. All houses were recomputed; ghkmbnmbw returns to level 1 (7 points). Only hnoo_kassar stays at level 10 as a manual owner bonus. Owner set house #1 (بيت رقم 1) to manual level 30 (never lowered) at 17:00 Europe/Berlin. | 17:58: added IG followers mahdialali84, asdfghj84602, lslm_tqw, hsnjmyl168 (houses 40-43). Total 43. TikTok captcha slider could not be solved; Activity readable. hnoo_kassar commented ~17 emoji comments, not counted (unattributed). | 18:55: added IG houses 44-53 (9 followers + commenter k_alsgaf). Total 53. TikTok captcha still blocks Activity. FB followers grouped, names not readable. | 19:45 (manual, asked by owner): added IG houses 54-59 (dllbwtfsh, safya_86, bthynhlztry, nargs34509 followers; om.sajad_sh, alhadidi_12347 commenters, 2 pts each). Total 59. IG 545, FB 257, TikTok 166 (captcha). Likes are grouped so liker points not attributed. | 19:55: from IG followers list (all above already-housed 16:45 batch, so after 15:00) added houses 60-76. Total 76. TikTok: no new followers since 15:00. FB: names not dated; awaiting owner decision. | 20:01: owner approved adding 16 top FB followers: houses 77-90. Total 90. | 21:05: added IG followers houses 91-105. Total 105. TikTok captcha still blocks. FB: no new named commenters.",
  "counts": {
   "tiktok_73saleh7": 166,
-  "facebook_qissati_ai": 252,
-  "instagram_qissati.ai2026": 472
+  "facebook_qissati_ai": 265,
+  "instagram_qissati.ai2026": 547
  },
  "seen_followers": [
   {
@@ -274,6 +274,468 @@
    "house_id": 39,
    "source": "comment",
    "first_seen": "2026-11-20T16:45:00+01:00"
+  },
+  {
+   "username": "mahdialali84",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 40,
+   "source": "follow",
+   "first_seen": "2026-11-20T17:58:00+01:00"
+  },
+  {
+   "username": "asdfghj84602",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 41,
+   "source": "follow",
+   "first_seen": "2026-11-20T17:58:00+01:00"
+  },
+  {
+   "username": "lslm_tqw",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 42,
+   "source": "follow",
+   "first_seen": "2026-11-20T17:58:00+01:00"
+  },
+  {
+   "username": "hsnjmyl168",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 43,
+   "source": "follow",
+   "first_seen": "2026-11-20T17:58:00+01:00"
+  },
+  {
+   "username": "aanfasalhjyr45",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 44,
+   "source": "follow",
+   "first_seen": "2026-11-20T18:55:00+01:00"
+  },
+  {
+   "username": "najetelkeurti",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 45,
+   "source": "follow",
+   "first_seen": "2026-11-20T18:55:00+01:00"
+  },
+  {
+   "username": "ahmad4445444",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 46,
+   "source": "follow",
+   "first_seen": "2026-11-20T18:55:00+01:00"
+  },
+  {
+   "username": "kmdynty3",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 47,
+   "source": "follow",
+   "first_seen": "2026-11-20T18:55:00+01:00"
+  },
+  {
+   "username": "fyytybny",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 48,
+   "source": "follow",
+   "first_seen": "2026-11-20T18:55:00+01:00"
+  },
+  {
+   "username": "m8744754",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 49,
+   "source": "follow",
+   "first_seen": "2026-11-20T18:55:00+01:00"
+  },
+  {
+   "username": "shblzmn140",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 50,
+   "source": "follow",
+   "first_seen": "2026-11-20T18:55:00+01:00"
+  },
+  {
+   "username": "dalid52",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 51,
+   "source": "follow",
+   "first_seen": "2026-11-20T18:55:00+01:00"
+  },
+  {
+   "username": "romailabshmany",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 52,
+   "source": "follow",
+   "first_seen": "2026-11-20T18:55:00+01:00"
+  },
+  {
+   "username": "k_alsgaf",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 53,
+   "source": "comment",
+   "first_seen": "2026-11-20T18:55:00+01:00"
+  },
+  {
+   "username": "dllbwtfsh",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 54,
+   "source": "follow",
+   "first_seen": "2026-11-20T19:45:00+01:00"
+  },
+  {
+   "username": "safya_86",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 55,
+   "source": "follow",
+   "first_seen": "2026-11-20T19:45:00+01:00"
+  },
+  {
+   "username": "bthynhlztry",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 56,
+   "source": "follow",
+   "first_seen": "2026-11-20T19:45:00+01:00"
+  },
+  {
+   "username": "nargs34509",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 57,
+   "source": "follow",
+   "first_seen": "2026-11-20T19:45:00+01:00"
+  },
+  {
+   "username": "om.sajad_sh",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 58,
+   "source": "comment",
+   "first_seen": "2026-11-20T19:45:00+01:00"
+  },
+  {
+   "username": "alhadidi_12347",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 59,
+   "source": "comment",
+   "first_seen": "2026-11-20T19:45:00+01:00"
+  },
+  {
+   "username": "wrdbwnmws",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 60,
+   "source": "follow",
+   "first_seen": "2026-11-20T19:55:00+01:00"
+  },
+  {
+   "username": "mnasraamal",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 61,
+   "source": "follow",
+   "first_seen": "2026-11-20T19:55:00+01:00"
+  },
+  {
+   "username": "90ummazin",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 62,
+   "source": "follow",
+   "first_seen": "2026-11-20T19:55:00+01:00"
+  },
+  {
+   "username": "hhhh135800",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 63,
+   "source": "follow",
+   "first_seen": "2026-11-20T19:55:00+01:00"
+  },
+  {
+   "username": "umahmad1134",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 64,
+   "source": "follow",
+   "first_seen": "2026-11-20T19:55:00+01:00"
+  },
+  {
+   "username": "alfajer_handcrafts",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 65,
+   "source": "follow",
+   "first_seen": "2026-11-20T19:55:00+01:00"
+  },
+  {
+   "username": "bdallh57663",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 66,
+   "source": "follow",
+   "first_seen": "2026-11-20T19:55:00+01:00"
+  },
+  {
+   "username": "sahar.tamimi0",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 67,
+   "source": "follow",
+   "first_seen": "2026-11-20T19:55:00+01:00"
+  },
+  {
+   "username": "goose.5390637",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 68,
+   "source": "follow",
+   "first_seen": "2026-11-20T19:55:00+01:00"
+  },
+  {
+   "username": "rfyf72123",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 69,
+   "source": "follow",
+   "first_seen": "2026-11-20T19:55:00+01:00"
+  },
+  {
+   "username": "bahn903",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 70,
+   "source": "follow",
+   "first_seen": "2026-11-20T19:55:00+01:00"
+  },
+  {
+   "username": "amy129215",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 71,
+   "source": "follow",
+   "first_seen": "2026-11-20T19:55:00+01:00"
+  },
+  {
+   "username": "mokdadhayet",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 72,
+   "source": "follow",
+   "first_seen": "2026-11-20T19:55:00+01:00"
+  },
+  {
+   "username": "prll_s3",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 73,
+   "source": "follow",
+   "first_seen": "2026-11-20T19:55:00+01:00"
+  },
+  {
+   "username": "m7019465",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 74,
+   "source": "follow",
+   "first_seen": "2026-11-20T19:55:00+01:00"
+  },
+  {
+   "username": "sydqnynt",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 75,
+   "source": "follow",
+   "first_seen": "2026-11-20T19:55:00+01:00"
+  },
+  {
+   "username": "ixoor7",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 76,
+   "source": "follow",
+   "first_seen": "2026-11-20T19:55:00+01:00"
+  },
+  {
+   "username": "ثقتي بالله تكفيني",
+   "platform": "facebook_qissati_ai",
+   "house_id": 77,
+   "source": "follow",
+   "first_seen": "2026-11-20T20:01:00+01:00"
+  },
+  {
+   "username": "الحمد الله",
+   "platform": "facebook_qissati_ai",
+   "house_id": 78,
+   "source": "follow",
+   "first_seen": "2026-11-20T20:01:00+01:00"
+  },
+  {
+   "username": "المركز الثقافي ديدوش مراد-قسنطينة",
+   "platform": "facebook_qissati_ai",
+   "house_id": 79,
+   "source": "follow",
+   "first_seen": "2026-11-20T20:01:00+01:00"
+  },
+  {
+   "username": "Asmaa Sayed",
+   "platform": "facebook_qissati_ai",
+   "house_id": 80,
+   "source": "follow",
+   "first_seen": "2026-11-20T20:01:00+01:00"
+  },
+  {
+   "username": "منى حسن",
+   "platform": "facebook_qissati_ai",
+   "house_id": 81,
+   "source": "follow",
+   "first_seen": "2026-11-20T20:01:00+01:00"
+  },
+  {
+   "username": "اسلام حلاوة",
+   "platform": "facebook_qissati_ai",
+   "house_id": 82,
+   "source": "follow",
+   "first_seen": "2026-11-20T20:01:00+01:00"
+  },
+  {
+   "username": "Khadija Rifiya",
+   "platform": "facebook_qissati_ai",
+   "house_id": 83,
+   "source": "follow",
+   "first_seen": "2026-11-20T20:01:00+01:00"
+  },
+  {
+   "username": "ام جمال جمال",
+   "platform": "facebook_qissati_ai",
+   "house_id": 84,
+   "source": "follow",
+   "first_seen": "2026-11-20T20:01:00+01:00"
+  },
+  {
+   "username": "نسيم الفردوس",
+   "platform": "facebook_qissati_ai",
+   "house_id": 85,
+   "source": "follow",
+   "first_seen": "2026-11-20T20:01:00+01:00"
+  },
+  {
+   "username": "Mezer Razan",
+   "platform": "facebook_qissati_ai",
+   "house_id": 86,
+   "source": "follow",
+   "first_seen": "2026-11-20T20:01:00+01:00"
+  },
+  {
+   "username": "ام ايهاب",
+   "platform": "facebook_qissati_ai",
+   "house_id": 87,
+   "source": "follow",
+   "first_seen": "2026-11-20T20:01:00+01:00"
+  },
+  {
+   "username": "Hâkim Hâkim",
+   "platform": "facebook_qissati_ai",
+   "house_id": 88,
+   "source": "follow",
+   "first_seen": "2026-11-20T20:01:00+01:00"
+  },
+  {
+   "username": "Kamr Zarzour",
+   "platform": "facebook_qissati_ai",
+   "house_id": 89,
+   "source": "follow",
+   "first_seen": "2026-11-20T20:01:00+01:00"
+  },
+  {
+   "username": "وتين وتين",
+   "platform": "facebook_qissati_ai",
+   "house_id": 90,
+   "source": "follow",
+   "first_seen": "2026-11-20T20:01:00+01:00"
+  },
+  {
+   "username": "hodahossenii",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 91,
+   "source": "follow",
+   "first_seen": "2026-11-20T21:05:00+01:00"
+  },
+  {
+   "username": "zi_an86",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 92,
+   "source": "follow",
+   "first_seen": "2026-11-20T21:05:00+01:00"
+  },
+  {
+   "username": "ahmd87041",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 93,
+   "source": "follow",
+   "first_seen": "2026-11-20T21:05:00+01:00"
+  },
+  {
+   "username": "chnar_krdo",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 94,
+   "source": "follow",
+   "first_seen": "2026-11-20T21:05:00+01:00"
+  },
+  {
+   "username": "msdlqtysht",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 95,
+   "source": "follow",
+   "first_seen": "2026-11-20T21:05:00+01:00"
+  },
+  {
+   "username": "ghruf8561",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 96,
+   "source": "follow",
+   "first_seen": "2026-11-20T21:05:00+01:00"
+  },
+  {
+   "username": "minalam15",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 97,
+   "source": "follow",
+   "first_seen": "2026-11-20T21:05:00+01:00"
+  },
+  {
+   "username": "sara520049",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 98,
+   "source": "follow",
+   "first_seen": "2026-11-20T21:05:00+01:00"
+  },
+  {
+   "username": "xgamer55353",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 99,
+   "source": "follow",
+   "first_seen": "2026-11-20T21:05:00+01:00"
+  },
+  {
+   "username": "ohoudmustafa",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 100,
+   "source": "follow",
+   "first_seen": "2026-11-20T21:05:00+01:00"
+  },
+  {
+   "username": "maha.alsaadi6486",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 101,
+   "source": "follow",
+   "first_seen": "2026-11-20T21:05:00+01:00"
+  },
+  {
+   "username": "m3216hsn",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 102,
+   "source": "follow",
+   "first_seen": "2026-11-20T21:05:00+01:00"
+  },
+  {
+   "username": "elhamarda",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 103,
+   "source": "follow",
+   "first_seen": "2026-11-20T21:05:00+01:00"
+  },
+  {
+   "username": "zmzzmia",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 104,
+   "source": "follow",
+   "first_seen": "2026-11-20T21:05:00+01:00"
+  },
+  {
+   "username": "i.elii57",
+   "platform": "instagram_qissati.ai2026",
+   "house_id": 105,
+   "source": "follow",
+   "first_seen": "2026-11-20T21:05:00+01:00"
   }
  ],
  "engagement_totals": {
@@ -581,6 +1043,172 @@
    "shares": 0,
    "gifts": 0,
    "points": 2,
+   "level": 1
+  },
+  "mahdialali84": {
+   "likes": 0,
+   "comments": 0,
+   "shares": 0,
+   "gifts": 0,
+   "points": 0,
+   "level": 1
+  },
+  "asdfghj84602": {
+   "likes": 0,
+   "comments": 0,
+   "shares": 0,
+   "gifts": 0,
+   "points": 0,
+   "level": 1
+  },
+  "lslm_tqw": {
+   "likes": 0,
+   "comments": 0,
+   "shares": 0,
+   "gifts": 0,
+   "points": 0,
+   "level": 1
+  },
+  "hsnjmyl168": {
+   "likes": 0,
+   "comments": 0,
+   "shares": 0,
+   "gifts": 0,
+   "points": 0,
+   "level": 1
+  },
+  "ahmad4445444": {
+   "likes": 1,
+   "comments": 2,
+   "shares": 0,
+   "gifts": 0,
+   "points": 5
+  },
+  "k_alsgaf": {
+   "likes": 0,
+   "comments": 1,
+   "shares": 0,
+   "gifts": 0,
+   "points": 2
+  },
+  "hodahossenii": {
+   "likes": 0,
+   "comments": 0,
+   "shares": 0,
+   "gifts": 0,
+   "points": 0,
+   "level": 1
+  },
+  "zi_an86": {
+   "likes": 0,
+   "comments": 0,
+   "shares": 0,
+   "gifts": 0,
+   "points": 0,
+   "level": 1
+  },
+  "ahmd87041": {
+   "likes": 0,
+   "comments": 0,
+   "shares": 0,
+   "gifts": 0,
+   "points": 0,
+   "level": 1
+  },
+  "chnar_krdo": {
+   "likes": 0,
+   "comments": 0,
+   "shares": 0,
+   "gifts": 0,
+   "points": 0,
+   "level": 1
+  },
+  "msdlqtysht": {
+   "likes": 0,
+   "comments": 0,
+   "shares": 0,
+   "gifts": 0,
+   "points": 0,
+   "level": 1
+  },
+  "ghruf8561": {
+   "likes": 0,
+   "comments": 0,
+   "shares": 0,
+   "gifts": 0,
+   "points": 0,
+   "level": 1
+  },
+  "minalam15": {
+   "likes": 0,
+   "comments": 0,
+   "shares": 0,
+   "gifts": 0,
+   "points": 0,
+   "level": 1
+  },
+  "sara520049": {
+   "likes": 0,
+   "comments": 0,
+   "shares": 0,
+   "gifts": 0,
+   "points": 0,
+   "level": 1
+  },
+  "xgamer55353": {
+   "likes": 0,
+   "comments": 1,
+   "shares": 0,
+   "gifts": 0,
+   "points": 2,
+   "level": 1
+  },
+  "ohoudmustafa": {
+   "likes": 0,
+   "comments": 0,
+   "shares": 0,
+   "gifts": 0,
+   "points": 0,
+   "level": 1
+  },
+  "maha.alsaadi6486": {
+   "likes": 0,
+   "comments": 0,
+   "shares": 0,
+   "gifts": 0,
+   "points": 0,
+   "level": 1
+  },
+  "m3216hsn": {
+   "likes": 0,
+   "comments": 0,
+   "shares": 0,
+   "gifts": 0,
+   "points": 0,
+   "level": 1
+  },
+  "elhamarda": {
+   "likes": 0,
+   "comments": 0,
+   "shares": 0,
+   "gifts": 0,
+   "points": 0,
+   "level": 1
+  },
+  "zmzzmia": {
+   "likes": 0,
+   "comments": 1,
+   "shares": 0,
+   "gifts": 0,
+   "points": 2,
+   "level": 1
+  },
+  "i.elii57": {
+   "likes": 0,
+   "comments": 0,
+   "shares": 0,
+   "gifts": 0,
+   "points": 0,
    "level": 1
   }
  },
