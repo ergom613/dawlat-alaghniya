@@ -120,9 +120,13 @@ export function levelForIndex(i) {
   return 26 + (h % 5);
 }
 
+export const MIN_LEVEL = 3;
+
+// Minimum house level is 3. Formula: max(3, 1 + floor(points/50)), capped at 30.
+// Exceptions (applied by the caller / stored data): house #1 stays 30, hnoo_kassar stays at least 10.
 export function levelFromPoints(points) {
   const p = Math.max(0, Number(points) || 0);
-  return Math.max(1, Math.min(30, 1 + Math.floor(p / 50)));
+  return Math.max(MIN_LEVEL, Math.min(30, 1 + Math.floor(p / 50)));
 }
 
 export function nextFreePlots(data, occupied, count = 1) {
@@ -159,7 +163,7 @@ export function buildResidents(data, fileList, demoCount) {
     const label = (file && file.label) || (anonymous ? ('بيت رقم ' + id) : '');
     const name = demoCount > 1 ? exampleName(i) : ((file && file.name) || label || ('بيت رقم ' + id));
     const seed = (file && file.seed) || (demoCount > 1 ? name : ('house_' + id));
-    let level = file && file.level ? file.level : (demoCount > 1 ? levelForIndex(i) : 1);
+    let level = file && file.level ? file.level : (demoCount > 1 ? levelForIndex(i) : MIN_LEVEL);
     if (demoCount > 1 && i === 0) level = 30;
     let x, z, kind;
     if (file && file.x != null && file.z != null && demoCount <= 1) {
@@ -177,7 +181,10 @@ export function buildResidents(data, fileList, demoCount) {
       seed,
       anonymous: anonymous && demoCount <= 1,
       owner: !!(file && file.owner),
-      level: Math.max(1, Math.min(30, level | 0)),
+      level: (file && (file.owner || file.id === 1)) ? 30
+        : ((file && (file.name === 'hnoo_kassar' || file.seed === 'hnoo_kassar'))
+          ? Math.max(10, Math.min(30, level | 0))
+          : Math.max(demoCount > 1 ? 1 : MIN_LEVEL, Math.min(30, level | 0))),
       points: (file && file.points != null) ? file.points : undefined,
       x,
       z,

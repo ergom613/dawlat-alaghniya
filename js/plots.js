@@ -132,7 +132,7 @@ export function buildResidents(data, fileList, demoCount) {
     const label = (file && file.label) || (anonymous ? ('بيت رقم ' + id) : '');
     const name = demoCount > 1 ? exampleName(i) : ((file && file.name) || label || ('بيت رقم ' + id));
     const seed = (file && file.seed) || (demoCount > 1 ? name : ('house_' + id));
-    let level = file && file.level ? file.level : (demoCount > 1 ? levelForIndex(i) : 1);
+    let level = file && file.level ? file.level : (demoCount > 1 ? levelForIndex(i) : 3);
     if (demoCount > 1 && i === 0) level = 30;
     out[i] = {
       i,
@@ -142,7 +142,7 @@ export function buildResidents(data, fileList, demoCount) {
       seed,
       anonymous: anonymous && demoCount <= 1,
       owner: !!(file && file.owner),
-      level: Math.max(1, Math.min(30, level | 0)),
+      level: Math.max(3, Math.min(30, level | 0)),
       x: (file && file.x != null && demoCount <= 1) ? file.x : plots[i].x,
       z: (file && file.z != null && demoCount <= 1) ? file.z : plots[i].z,
       kind: plots[i].kind,

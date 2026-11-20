@@ -1,7 +1,7 @@
 // Owner-only "إضافة ساكن" for the static GitHub Pages site.
 // The token never leaves the owner's browser except as an Authorization
 // header to api.github.com. Visitors never see these controls.
-import { nextFreePlots, levelFromPoints } from './plots.js';
+import { nextFreePlots, levelFromPoints, MIN_LEVEL } from './plots.js';
 
 export const OWNER_REPO = { owner: 'ergom613', repo: 'dawlat-alaghniya', branch: 'main' };
 function repoDir() {
@@ -66,9 +66,9 @@ export function computeLevel({ points, level }) {
     return levelFromPoints(points);
   }
   if (level != null && String(level).trim() !== '') {
-    return Math.max(1, Math.min(30, parseInt(level, 10) || 1));
+    return Math.max(MIN_LEVEL, Math.min(30, parseInt(level, 10) || MIN_LEVEL));
   }
-  return 1;
+  return MIN_LEVEL;
 }
 
 export function buildNewResident(list, monacoData, { name, points, level }) {
