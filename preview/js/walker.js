@@ -765,7 +765,14 @@ window.Walker = {
   goHome,
   startFree,
   stopFree,
-  setTimeScale: (n) => { state.timeScale = Math.max(0.1, Number(n) || 1); },
+  setInput: (x, y) => { freeStick.x = x || 0; freeStick.y = y || 0; freeStick.on = !!(x || y); freeTarget = null; },
+  setTarget: (x, z) => { freeTarget = { x, z }; freeStick.on = false; },
+  stepFree: (dt) => {
+    if (state.mode !== 'free') return;
+    tickFree(dt || 0.016);
+    if (state.follow) followCamera(dt || 0.016);
+  },
+  setTimeScale: (n) => { state.timeScale = Math.max(0, Number(n) || 0); },
   getState: () => ({
     mode: state.mode, x: state.x, z: state.z, yaw: state.yaw,
     place: state.place, name: state.info && state.info.name,
