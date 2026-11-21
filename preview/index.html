@@ -85,45 +85,53 @@
       display: flex; flex-direction: column; gap: 8px; align-items: stretch;
     }
     #topRow { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; }
-    #followStrip { padding: 8px 10px 10px; text-align: center; }
-    #followStrip .followLine {
-      margin: 0 0 8px; font-size: 13px; font-weight: 700; color: var(--text);
-      line-height: 1.35;
+    #followStrip { display: flex; align-items: center; flex: 0 0 auto; order: 9; }
+    #followBtn { height: auto; min-height: 36px; align-self: stretch; padding: 0 12px; font-size: 13px; }
+    #followPop {
+      position: fixed; z-index: 70; top: calc(var(--safe-top) + 64px); left: 50%; transform: translateX(-50%);
+      width: min(330px, calc(100vw - 24px)); padding: 12px 12px 14px; text-align: center;
     }
-    #followStrip .stories {
+    #followPop[hidden] { display: none !important; }
+    #followPop .followLine { margin: 0 22px 10px; font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.35; }
+    #followClose {
+      position: absolute; top: 6px; left: 6px; width: 30px; height: 30px; border-radius: 50%;
+      border: 1px solid var(--line); background: rgba(255,255,255,0.08); color: var(--text);
+      font-size: 14px; line-height: 1; cursor: pointer; font-family: inherit;
+    }
+    #followPop .stories {
       display: flex; justify-content: center; align-items: flex-start; gap: 16px;
     }
-    #followStrip .story {
+    #followPop .story {
       display: flex; flex-direction: column; align-items: center; gap: 4px;
       text-decoration: none; color: var(--text); width: 64px;
     }
-    #followStrip .ring {
+    #followPop .ring {
       width: 56px; height: 56px; border-radius: 50%; padding: 3px;
       display: grid; place-items: center;
       box-shadow: 0 2px 8px rgba(0,0,0,0.25);
       transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
-    #followStrip .story:hover .ring, #followStrip .story:focus-visible .ring {
+    #followPop .story:hover .ring, #followPop .story:focus-visible .ring {
       transform: scale(1.08); box-shadow: 0 4px 14px rgba(0,0,0,0.35);
     }
-    #followStrip .av {
+    #followPop .av {
       width: 100%; height: 100%; border-radius: 50%;
       background: #111; display: grid; place-items: center;
       overflow: hidden; border: 2px solid rgba(16,14,12,0.85);
     }
-    #followStrip .av svg { width: 26px; height: 26px; display: block; }
-    #followStrip .story.tiktok .ring { background: linear-gradient(135deg, #25F4EE 0%, #000 48%, #FE2C55 100%); }
-    #followStrip .story.tiktok .av { background: #111; }
-    #followStrip .story.facebook .ring { background: #1877F2; }
-    #followStrip .story.facebook .av { background: #1877F2; border-color: #1877F2; }
-    #followStrip .story.instagram .ring {
+    #followPop .av svg { width: 26px; height: 26px; display: block; }
+    #followPop .story.tiktok .ring { background: linear-gradient(135deg, #25F4EE 0%, #000 48%, #FE2C55 100%); }
+    #followPop .story.tiktok .av { background: #111; }
+    #followPop .story.facebook .ring { background: #1877F2; }
+    #followPop .story.facebook .av { background: #1877F2; border-color: #1877F2; }
+    #followPop .story.instagram .ring {
       background: conic-gradient(from 200deg, #f58529, #dd2a7b, #8134af, #515bd4, #f58529);
     }
-    #followStrip .story.instagram .av {
+    #followPop .story.instagram .av {
       background: radial-gradient(circle at 30% 30%, #f58529, #dd2a7b 55%, #8134af);
       border-color: transparent;
     }
-    #followStrip .lab { font-size: 10px; font-weight: 700; color: var(--gold); line-height: 1.1; }
+    #followPop .lab { font-size: 10px; font-weight: 700; color: var(--gold); line-height: 1.1; }
     #brand { padding: 8px 14px; min-width: 0; }
     #brand h1 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: 0; line-height: 1.2; }
     #brand p { margin: 1px 0 0; font-size: 11px; color: var(--muted); }
@@ -339,13 +347,15 @@
       #stats { min-width: 72px; padding: 7px 10px; }
       #stats .n { font-size: 16px; }
       #searchForm { flex: 1 1 100%; width: 100%; padding: 5px; }
+      #searchForm { flex: 1 1 60%; width: auto; }
+      #followBtn { padding: 0 10px; font-size: 12px; }
       #searchForm input { font-size: 14px; }
       #foundMsg { top: calc(var(--safe-top) + 210px); }
-      #followStrip .followLine { font-size: 12px; }
-      #followStrip .ring { width: 48px; height: 48px; }
-      #followStrip .story { width: 56px; gap: 3px; }
-      #followStrip .stories { gap: 12px; }
-      #followStrip .av svg { width: 22px; height: 22px; }
+      #followPop .followLine { font-size: 12px; }
+      #followPop .ring { width: 48px; height: 48px; }
+      #followPop .story { width: 56px; gap: 3px; }
+      #followPop .stories { gap: 12px; }
+      #followPop .av svg { width: 22px; height: 22px; }
       #levelBadge { font-size: 22px; }
       #ownerDock { overflow: visible; flex-wrap: nowrap; }
       #ownerDock .btn { flex: 1 1 0; min-width: 0; padding: 6px 4px; font-size: 11px; }
@@ -362,33 +372,6 @@
   <div id="labels"></div>
   <div id="hud">
     <div id="top">
-      <div id="followStrip" class="panel">
-        <p class="followLine">تابعونا فضلاً لا أمراً 🌹 وبيتك بينبنى باسمك</p>
-        <div class="stories">
-          <a class="story tiktok" href="https://www.tiktok.com/@73saleh7" target="_blank" rel="noopener noreferrer">
-            <span class="ring"><span class="av" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="#fff"><path d="M14.5 3c.4 2.6 1.8 4.2 4.3 4.5v2.3c-1.5 0-2.9-.5-4.2-1.4v6.4c0 3.4-2.6 5.7-5.8 5.7-3.2 0-5.8-2.4-5.8-5.7s2.6-5.7 5.8-5.7c.3 0 .7 0 1 .1v2.5c-.3-.1-.7-.2-1-.2-1.8 0-3.3 1.4-3.3 3.3s1.5 3.3 3.3 3.3 3.2-1.4 3.2-3.3V3h2.5z"/></svg>
-            </span></span>
-            <span class="lab">تيك توك</span>
-          </a>
-          <a class="story facebook" href="https://www.facebook.com/profile.php?id=61595971268054" target="_blank" rel="noopener noreferrer">
-            <span class="ring"><span class="av" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="#fff"><path d="M14.5 8.5V6.8c0-.7.5-1 1.2-1h1.8V3h-2.7C11.9 3 11 5 11 6.7v1.8H9v2.8h2V21h3.5v-9.7h2.4l.4-2.8h-2.8z"/></svg>
-            </span></span>
-            <span class="lab">فيسبوك</span>
-          </a>
-          <a class="story instagram" href="https://www.instagram.com/qissati.ai2026/" target="_blank" rel="noopener noreferrer">
-            <span class="ring"><span class="av" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8">
-                <rect x="4" y="4" width="16" height="16" rx="5"/>
-                <circle cx="12" cy="12" r="4"/>
-                <circle cx="17.2" cy="6.8" r="1" fill="#fff" stroke="none"/>
-              </svg>
-            </span></span>
-            <span class="lab">انستغرام</span>
-          </a>
-        </div>
-      </div>
       <div id="topRow">
         <div id="brand" class="panel">
           <h1>دولة الأغنياء</h1>
@@ -398,6 +381,9 @@
           <div class="n" id="residentsCount">…</div>
           <div class="k" id="residentsHint">عم نعدّ السكان</div>
           <div id="fpsMeter"></div>
+        </div>
+        <div id="followStrip">
+          <button id="followBtn" class="btn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="followPop">👥 تابعونا</button>
         </div>
         <form id="searchForm" class="panel">
           <input id="search" type="search" placeholder="ابحث عن اسمك" autocomplete="off" enterkeyhint="search" />
@@ -472,6 +458,48 @@
         if (c) c.textContent = arNum(n) + ' ' + w;
         if (h) h.textContent = 'صرنا ' + arNum(n) + ' ' + w + ' وعم نكبر 🏗️';
       }).catch(function () {});
+    })();
+  </script>
+  <div id="followPop" class="panel" hidden role="dialog" aria-label="تابعونا">
+    <button id="followClose" type="button" aria-label="سكّر">✕</button>
+    <p class="followLine">تابعونا فضلاً لا أمراً 🌹 وبيتك بينبنى باسمك</p>
+            <div class="stories">
+              <a class="story tiktok" href="https://www.tiktok.com/@73saleh7" target="_blank" rel="noopener noreferrer">
+                <span class="ring"><span class="av" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="#fff"><path d="M14.5 3c.4 2.6 1.8 4.2 4.3 4.5v2.3c-1.5 0-2.9-.5-4.2-1.4v6.4c0 3.4-2.6 5.7-5.8 5.7-3.2 0-5.8-2.4-5.8-5.7s2.6-5.7 5.8-5.7c.3 0 .7 0 1 .1v2.5c-.3-.1-.7-.2-1-.2-1.8 0-3.3 1.4-3.3 3.3s1.5 3.3 3.3 3.3 3.2-1.4 3.2-3.3V3h2.5z"/></svg>
+                </span></span>
+                <span class="lab">تيك توك</span>
+              </a>
+              <a class="story facebook" href="https://www.facebook.com/profile.php?id=61595971268054" target="_blank" rel="noopener noreferrer">
+                <span class="ring"><span class="av" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="#fff"><path d="M14.5 8.5V6.8c0-.7.5-1 1.2-1h1.8V3h-2.7C11.9 3 11 5 11 6.7v1.8H9v2.8h2V21h3.5v-9.7h2.4l.4-2.8h-2.8z"/></svg>
+                </span></span>
+                <span class="lab">فيسبوك</span>
+              </a>
+              <a class="story instagram" href="https://www.instagram.com/qissati.ai2026/" target="_blank" rel="noopener noreferrer">
+                <span class="ring"><span class="av" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8">
+                    <rect x="4" y="4" width="16" height="16" rx="5"/>
+                    <circle cx="12" cy="12" r="4"/>
+                    <circle cx="17.2" cy="6.8" r="1" fill="#fff" stroke="none"/>
+                  </svg>
+                </span></span>
+                <span class="lab">انستغرام</span>
+              </a>
+            </div>
+  </div>
+  <script>
+    (function () {
+      var btn = document.getElementById('followBtn');
+      var pop = document.getElementById('followPop');
+      var x = document.getElementById('followClose');
+      if (!btn || !pop) return;
+      function set(open) { pop.hidden = !open; btn.setAttribute('aria-expanded', open ? 'true' : 'false'); btn.classList.toggle('on', open); }
+      btn.addEventListener('click', function (e) { e.stopPropagation(); set(pop.hidden); });
+      if (x) x.addEventListener('click', function () { set(false); });
+      pop.addEventListener('click', function (e) { e.stopPropagation(); });
+      document.addEventListener('pointerdown', function (e) { if (!pop.hidden && !pop.contains(e.target) && e.target !== btn) set(false); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') set(false); });
     })();
   </script>
   <script type="module" src="./js/app.js"></script>
