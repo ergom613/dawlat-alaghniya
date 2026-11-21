@@ -753,7 +753,9 @@ export function createSouq({ scene, groundY, quality }) {
     const matCache = new Map();
     const M = (hex) => {
       if (matCache.has(hex)) return matCache.get(hex);
-      const m = L(hex); matCache.set(hex, m); return m;
+      // Self-lit so colourful goods still read at night on mobile (no PointLights).
+      const m = L(hex, { emissive: hex, emissiveIntensity: 0.55 });
+      matCache.set(hex, m); return m;
     };
     const batches = new Map();
     const batch = (key, geo, mat, pose) => {
@@ -776,6 +778,17 @@ export function createSouq({ scene, groundY, quality }) {
     }
     instanced(new THREE.BoxGeometry(1, 0.07, 1), wood, shelfBoard, interior);
     instanced(new THREE.BoxGeometry(1, 2.05, 1), wood2, shelfPost, interior);
+
+    // Warm back-wall wash so shop cavities aren't a black void on mobile.
+    const shopBackWash = new THREE.MeshLambertMaterial({
+      color: 0xe8d4b0, emissive: 0xffe1a0, emissiveIntensity: 0.2,
+    });
+    interior.userData.shopBackWash = shopBackWash;
+    const washPos = slots.map((s) => ({
+      x: s.side * (EAST + SHOP_D - 0.38), y: 1.85, z: s.z,
+      sx: 0.08, sy: 1, sz: SHOP_W * 0.82,
+    }));
+    instanced(new THREE.BoxGeometry(1, 3.2, 1), shopBackWash, washPos, interior);
 
     for (const s of slots) {
       const cols = colors[s.kind.key] || colors.spices;
@@ -1021,10 +1034,16 @@ export function createSouq({ scene, groundY, quality }) {
     sideBulbMat.opacity = 0.55 + n * 0.4;
     ribBulbMat.opacity = 0.5 + n * 0.45;
     sconceMat.opacity = 0.55 + n * 0.4;
-    shopFillMat.emissive.setHex(0xffe1a0).multiplyScalar(0.08 + n * 0.32);
+    shopFillMat.emissive.setHex(0xffe1a0).multiplyScalar(0.12 + n * 0.55);
     sideWashMat.emissive.setHex(0xffe1a0).multiplyScalar(0.10 + n * 0.28);
     if (cobble.emissive) cobble.emissive.setHex(0xffe0b0).multiplyScalar(0.04 + n * 0.12);
     else cobble.emissive = new THREE.Color(0xffe0b0).multiplyScalar(0.04 + n * 0.12);
+    if (!wood.emissive) wood.emissive = new THREE.Color();
+    if (!wood2.emissive) wood2.emissive = new THREE.Color();
+    wood.emissive.setHex(0xc4893f).multiplyScalar(n * 0.28);
+    wood2.emissive.setHex(0xd4a06a).multiplyScalar(n * 0.26);
+    const backWash = interior.userData && interior.userData.shopBackWash;
+    if (backWash) backWash.emissive.setHex(0xffe1a0).multiplyScalar(0.16 + n * 0.5);
     const hsBase = haloScale * (0.8 + n * 0.55);
     const glowOp = 0.08 + n * 0.78;
     for (let i = 0; i < lanternHalos.length; i++) {
