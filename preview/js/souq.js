@@ -1,6 +1,8 @@
 // سوق دولة الأغنياء — long covered Hamidiyeh-style souq on the reserved
 // inland plot west of the dabke plaza (preview only). Procedural geometry,
 // InstancedMesh shop repeats, interiors built lazily on first enter.
+// Interior lighting: hanging فوانيس cycle gold/amber/red/green/blue slowly;
+// shop-front glow + a few point lights (animated only when the camera is near).
 //
 // Public hooks (no edits to app.js required):
 //   window.cityPlaces.souq = { position, entrance, inside }
@@ -9,6 +11,7 @@
 import * as THREE from 'three';
 import * as layout from './layout.js';
 import { palm } from './landmarks.js';
+import { PERF } from './gfx.js';
 
 const SOUQ = layout.SOUQ || { x: -360, z: 30, w: 32, d: 168 };
 
@@ -199,6 +202,26 @@ const LINTEL = 4.35;
 const WALL_H = 5.5;
 const VAULT_R = STREET_W / 2 + 0.15; // ~4.45
 const EAST = STREET_W / 2;  // shop fronts at ±EAST
+
+// Changing lantern hues — slow, smooth cycle (ذهب / عنبر / أحمر / أخضر / أزرق).
+const LIGHT_PALETTE = [
+  new THREE.Color(0xffd56a),
+  new THREE.Color(0xff9a32),
+  new THREE.Color(0xff4d4d),
+  new THREE.Color(0x3ecf7a),
+  new THREE.Color(0x4a8dff),
+];
+const LIGHT_PERIOD = 22;
+function cycleHue(out, tSec, phase) {
+  const u = ((tSec / LIGHT_PERIOD) + (phase || 0)) % 1;
+  const n = LIGHT_PALETTE.length;
+  const x = u * n;
+  const i = Math.floor(x) % n;
+  const f = x - Math.floor(x);
+  const s = f * f * (3 - 2 * f);
+  out.copy(LIGHT_PALETTE[i]).lerp(LIGHT_PALETTE[(i + 1) % n], s);
+  return out;
+}
 
 function shopSlots() {
   // 15 shops on the west row, 14 on the east row (the mid bay is the city-facing
@@ -487,32 +510,101 @@ export function createSouq({ scene, groundY, quality }) {
     box(root, stoneDark, 70, 0.08, 3.6, EAST + SHOP_D + 42, 0.08, 0);
   }
 
-  // Hanging lanterns along the vault (instanced + glow sprites)
+  // Hanging lanterns along the vault (instanced metal + colored glass + glow)
   const lanterns = new THREE.Group(); root.add(lanterns);
   const step = isLow ? 16 : 9.2;
   const lanternPos = [];
   for (let z = -HALF_L + 6; z <= HALF_L - 6; z += step) lanternPos.push(z);
+  const lanternY = LINTEL + VAULT_R - 1.15;
   const lanternBody = new THREE.BoxGeometry(0.32, 0.5, 0.32);
   const lanternCap = new THREE.ConeGeometry(0.22, 0.22, 8);
   const lanternMat = P(0x3a2a18, { shininess: 30 });
-  const bodyIM = instanced(lanternBody, lanternMat, lanternPos.map((z) => ({ x: 0, y: LINTEL + VAULT_R - 1.15, z })), lanterns);
+  const bodyIM = instanced(lanternBody, lanternMat, lanternPos.map((z) => ({ x: 0, y: lanternY, z })), lanterns);
   instanced(lanternCap, gold, lanternPos.map((z) => ({ x: 0, y: LINTEL + VAULT_R - 0.82, z })), lanterns);
-  // chain
   instanced(
     new THREE.CylinderGeometry(0.015, 0.015, 1.0, 5),
     L(0x3a3a3a),
     lanternPos.map((z) => ({ x: 0, y: LINTEL + VAULT_R - 0.45, z })),
     lanterns,
   );
-  const bulbs = [];
-  for (const z of lanternPos) {
-    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), glow.bulbMat);
-    bulb.position.set(0, LINTEL + VAULT_R - 1.15, z);
-    lanterns.add(bulb);
-    glow.halo(lanterns, 0, LINTEL + VAULT_R - 1.25, z, isLow ? 2.2 : 3.2);
-    bulbs.push(bulb);
-  }
   void bodyIM;
+
+  const glassMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff, transparent: true, opacity: 0.78, depthWrite: false,
+  });
+  const glassIM = instanced(
+    new THREE.SphereGeometry(0.2, 10, 8),
+    glassMat,
+    lanternPos.map((z, i) => ({
+      x: 0, y: lanternY, z,
+      color: LIGHT_PALETTE[i % LIGHT_PALETTE.length],
+    })),
+    lanterns,
+  );
+  instanced(
+    new THREE.SphereGeometry(0.11, 8, 6),
+    new THREE.MeshBasicMaterial({ color: 0xfff6d8 }),
+    lanternPos.map((z) => ({ x: 0, y: lanternY, z })),
+    lanterns,
+  );
+  const lanternHalos = [];
+  const haloScale = isLow ? 2.6 : 3.8;
+  for (let i = 0; i < lanternPos.length; i++) {
+    const z = lanternPos[i];
+    const haloMat = glow.haloMat.clone();
+    haloMat.opacity = 0.2;
+    const halo = new THREE.Sprite(haloMat);
+    halo.position.set(0, lanternY - 0.1, z);
+    halo.scale.set(haloScale, haloScale, 1);
+    lanterns.add(halo);
+    lanternHalos.push({ mat: haloMat, halo, phase: i / Math.max(1, lanternPos.length) });
+  }
+
+  // Soft hanging lamps on each shop front (instanced) + a dim ceiling fill
+  const shopLampMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff, transparent: true, opacity: 0.9, depthWrite: false,
+  });
+  const shopLampIM = instanced(
+    new THREE.SphereGeometry(0.16, 8, 6),
+    shopLampMat,
+    slots.map((s, i) => ({
+      x: shopFrontX(s.side) - s.side * 0.55,
+      y: LINTEL - 0.85,
+      z: s.z,
+      color: LIGHT_PALETTE[(i + 2) % LIGHT_PALETTE.length],
+    })),
+    root,
+  );
+  const shopFillMat = new THREE.MeshLambertMaterial({ color: 0xe8d8b8, emissive: 0x000000 });
+  instanced(
+    new THREE.BoxGeometry(1, 0.04, 1),
+    shopFillMat,
+    slots.map((s) => ({
+      x: shopCenterX(s.side),
+      y: LINTEL - 0.08,
+      z: s.z,
+      sx: SHOP_D * 0.9,
+      sy: 1,
+      sz: SHOP_W * 0.72,
+    })),
+    root,
+  );
+
+  // A few real point lights along the nave (skipped on low / when pointLights is off)
+  const usePL = !isLow && PERF.pointLights !== false;
+  const nPL = usePL ? (qName === 'high' ? 6 : 4) : 0;
+  const pointLights = [];
+  if (nPL > 0) {
+    const span = HALF_L * 2 - 18;
+    for (let i = 0; i < nPL; i++) {
+      const z = -span / 2 + (i + 0.5) * (span / nPL);
+      const pl = new THREE.PointLight(0xffd56a, 0, 44, 1.45);
+      pl.position.set(0, 3.2, z);
+      pl.castShadow = false;
+      root.add(pl);
+      pointLights.push({ pl, phase: i / nPL + 0.08 });
+    }
+  }
 
   // Lazy interior (goods) — built once when the camera enters
   const interior = new THREE.Group();
@@ -632,10 +724,14 @@ export function createSouq({ scene, groundY, quality }) {
     interior.visible = near || interiorBuilt;
   }
 
-  // Night sync
+  // Night sync + changing interior lighting
   let lastNight = 0;
+  let nightFactor = 0;
+  let lightsArmed = true;
+  const _hue = new THREE.Color();
   function setNight(n) {
     n = Math.max(0, Math.min(1, n || 0));
+    nightFactor = n;
     if (Math.abs(n - lastNight) < 0.015) return;
     lastNight = n;
     glow.setNight(n);
@@ -647,12 +743,58 @@ export function createSouq({ scene, groundY, quality }) {
         w.m.color.copy(c);
       }
     }
-    runnerM.emissive = runnerM.emissive || new THREE.Color(0x000000);
-    if (runnerM.emissive) runnerM.emissive.setHex(0x3a1010).multiplyScalar(n * 0.25);
-    vaultMat.emissive = vaultMat.emissive || new THREE.Color(0x000000);
-    if (vaultMat.emissive) vaultMat.emissive.setRGB(0.15 * n, 0.08 * n, 0.02 * n);
+  }
+  const _warmGold = new THREE.Color(0xffc56a);
+  function tintIM(mesh, count, tSec, phaseStep, phase0, warmMix) {
+    if (!mesh || !mesh.instanceColor) return;
+    for (let i = 0; i < count; i++) {
+      cycleHue(_hue, tSec, (phase0 || 0) + i * phaseStep);
+      if (warmMix) _hue.lerp(_warmGold, warmMix);
+      mesh.setColorAt(i, _hue);
+    }
+    mesh.instanceColor.needsUpdate = true;
+  }
+  function tickLights(tSec, near, night) {
+    if (typeof window.__souqLightT === 'number') tSec = window.__souqLightT;
+    const n = (night != null ? night : nightFactor) || 0;
+    if (!near) {
+      if (lightsArmed) {
+        for (const rec of pointLights) rec.pl.intensity = 0;
+        lightsArmed = false;
+      }
+      return;
+    }
+    lightsArmed = true;
+    tintIM(glassIM, lanternPos.length, tSec, 1 / Math.max(1, lanternPos.length), 0);
+    tintIM(shopLampIM, slots.length, tSec, 0.17, 0.22, 0.15);
+    const glowOp = 0.12 + n * 0.7;
+    glassMat.opacity = 0.4 + n * 0.5;
+    shopLampMat.opacity = 0.5 + n * 0.45;
+    shopFillMat.emissive.setHex(0xffe1a0).multiplyScalar(0.05 + n * 0.22);
+    const hs = haloScale * (0.8 + n * 0.55);
+    for (const rec of lanternHalos) {
+      cycleHue(_hue, tSec, rec.phase);
+      rec.mat.color.copy(_hue);
+      rec.mat.opacity = glowOp;
+      rec.halo.scale.set(hs, hs, 1);
+    }
+    // Point lights color the inner vault and shop fronts; keep the vault
+    // material itself a warm stone (DoubleSide — emissive would also light the roof outside).
+    const plBase = 0.45 + n * 2.05;
+    for (const rec of pointLights) {
+      cycleHue(_hue, tSec, rec.phase);
+      rec.pl.color.copy(_hue);
+      rec.pl.intensity = plBase * (0.88 + 0.12 * Math.sin((tSec / LIGHT_PERIOD) * Math.PI * 2 + rec.phase * 6.28));
+    }
+    if (!vaultMat.emissive) vaultMat.emissive = new THREE.Color();
+    vaultMat.emissive.setRGB(0.12 * n, 0.07 * n, 0.02 * n);
+    if (!runnerM.emissive) runnerM.emissive = new THREE.Color();
+    runnerM.emissive.setHex(0x3a1010).multiplyScalar(n * 0.22);
   }
   setNight(0);
+  tickLights(0, true, 0);
+  for (const rec of pointLights) rec.pl.intensity = 0;
+  lightsArmed = false;
 
   shadowize(root, !isLow && qs && qs.shadows !== false);
 
@@ -700,7 +842,7 @@ export function createSouq({ scene, groundY, quality }) {
 
   return {
     root, setNight, views, center: new THREE.Vector3(SOUQ.x, gy, SOUQ.z),
-    kind: 'souq', ensureInterior, buildGoods, glow,
+    kind: 'souq', ensureInterior, buildGoods, glow, tickLights,
     entrance, inside: insidePt, position, y0, slots, isLow,
     bounds: { halfL: HALF_L, streetW: STREET_W, y0 },
   };
@@ -821,7 +963,27 @@ function initSouq() {
   bindWalk(souq, app);
   hookPlacesButton(souq, app);
   hookNightAndLoop(souq, app);
+  hookSouqDeepLink(app);
   return souq;
+}
+
+function hookSouqDeepLink(app) {
+  let place = '', tod = '';
+  try {
+    const q = new URLSearchParams(location.search);
+    place = (q.get('place') || '').toLowerCase();
+    tod = (q.get('tod') || '').toLowerCase();
+  } catch { /* */ }
+  if (place !== 'souq' && place !== 'souk') return;
+  if (tod === 'night' || tod === '0') window.__lockTod = 0.02;
+  else if (tod === 'dusk') window.__lockTod = 0.8;
+  else if (tod === 'day') window.__lockTod = 0.45;
+  const go = () => {
+    if (!_souq || !window.MonacoApp) { setTimeout(go, 120); return; }
+    viewSouq('inside', true);
+    if (typeof window.__lockTod === 'number' && app && app.setTod) app.setTod(window.__lockTod);
+  };
+  setTimeout(go, 280);
 }
 
 function setFound(text, show) {
@@ -1074,15 +1236,20 @@ function hookNightAndLoop(souq, app) {
     last = now;
     updateFly(app, now);
     tickWalk(dt, app);
-    souq.setNight(guessNight(app));
+    const night = guessNight(app);
+    souq.setNight(night);
     if (app && app.camera) {
       const dx = app.camera.position.x - SOUQ.x, dz = app.camera.position.z - SOUQ.z;
       const inside = Math.abs(dx) < 18 && Math.abs(dz) < HALF_L + 6;
+      const near = inside || walking || atSouq || (dx * dx + dz * dz) < 140 * 140;
+      if (souq.tickLights) souq.tickLights(now * 0.001, near, night);
       if (inside) souq.ensureInterior(false);
       if (walking || atSouq) window.__interiorCam = true;
       else if (inside && app.camera.position.y < souq.y0 + 6) window.__interiorCam = true;
       const lab = document.getElementById('labels');
       if (lab) lab.style.visibility = window.__interiorCam ? 'hidden' : '';
+    } else if (souq.tickLights) {
+      souq.tickLights(now * 0.001, false, night);
     }
   };
   requestAnimationFrame(loop);
