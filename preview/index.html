@@ -362,6 +362,42 @@
       #seedWrap { display: none; }
       #ytWeddingWrap { transform: scale(0.86); transform-origin: bottom right; }
     }
+    #searchForm { position: relative; }
+    #searchSuggest {
+      position: absolute; top: calc(100% + 6px); right: 0; left: 0; z-index: 80; padding: 6px;
+      max-height: min(52vh, 380px); overflow-y: auto; display: flex; flex-direction: column; gap: 4px;
+    }
+    #searchSuggest[hidden] { display: none !important; }
+    #searchSuggest .sg {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;
+      border: 0; border-radius: 14px; background: rgba(255,255,255,0.06); color: var(--text);
+      padding: 9px 12px; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; text-align: right;
+    }
+    #searchSuggest .sg small { color: var(--gold); font-weight: 700; font-size: 11px; white-space: nowrap; }
+    #searchSuggest .sg bdi { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: ltr; }
+    #searchSuggest .sg.on, #searchSuggest .sg:hover { background: rgba(232,196,90,0.22); }
+    #searchSuggest .sg-none { padding: 10px; color: var(--muted); font-size: 13px; text-align: center; }
+    #houseCard {
+      position: fixed; z-index: 75; left: 50%; transform: translateX(-50%);
+      bottom: calc(var(--safe-bottom, 10px) + 96px); width: min(340px, calc(100vw - 24px));
+      padding: 12px 14px 14px; text-align: center; border-color: var(--gold);
+      box-shadow: 0 0 0 2px rgba(232,196,90,0.35), 0 10px 28px rgba(0,0,0,0.4);
+    }
+    #houseCard[hidden] { display: none !important; }
+    #houseCard .hc-kicker { font-size: 12px; color: var(--gold); font-weight: 800; }
+    #houseCard .hc-name { font-size: 20px; font-weight: 800; margin: 2px 26px 4px; direction: ltr; unicode-bidi: plaintext; overflow-wrap: anywhere; }
+    #houseCard .hc-meta { display: flex; gap: 10px; justify-content: center; font-size: 13px; color: var(--muted); margin-bottom: 10px; flex-wrap: wrap; }
+    #houseCard .hc-meta span { background: rgba(255,255,255,0.08); border-radius: 999px; padding: 3px 10px; }
+    #houseCard #houseCardShare { width: 100%; }
+    #houseCardClose {
+      position: absolute; top: 8px; left: 8px; width: 30px; height: 30px; border-radius: 50%;
+      border: 1px solid var(--line); background: rgba(255,255,255,0.08); color: var(--text); cursor: pointer; font-family: inherit;
+    }
+    #shareToast { position: fixed; z-index: 90; left: 50%; transform: translateX(-50%); top: calc(var(--safe-top) + 120px); padding: 10px 16px; font-weight: 800; }
+    #shareToast[hidden] { display: none !important; }
+    .name-tag.picked { background: linear-gradient(180deg, #f0d36a, #d4a84a) !important; color: #2a1f0a !important; border: 2px solid #fff6d0 !important; box-shadow: 0 0 18px rgba(240,211,106,0.85), 0 4px 12px rgba(0,0,0,0.4) !important; z-index: 8; transform-origin: 50% 100%; }
+    .name-tag.picked strong { font-size: 16px; }
+    .name-tag.picked small { color: #4a3510 !important; }
   </style>
   <script type="importmap">
     { "imports": { "three": "./vendor/three.module.js" } }
@@ -386,8 +422,9 @@
           <button id="followBtn" class="btn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="followPop">👥 تابعونا</button>
         </div>
         <form id="searchForm" class="panel">
-          <input id="search" type="search" placeholder="ابحث عن اسمك" autocomplete="off" enterkeyhint="search" />
-          <button type="submit">بحث</button>
+          <input id="search" type="search" placeholder="🔍 دوّر على بيتك: اسمك أو رقم بيتك" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-autocomplete="list" aria-controls="searchSuggest" />
+          <button type="submit">دوّر</button>
+          <div id="searchSuggest" class="panel" role="listbox" hidden></div>
         </form>
       </div>
     </div>
@@ -429,7 +466,8 @@
           <button class="btn tool" id="btnOwnerAdd" type="button">➕ إضافة</button>
         </div>
         <div id="publicDock" class="dock-row">
-          <button class="btn tool" id="btnPlaces" type="button" title="الجامعة والمطعم">📍 أماكن</button>
+          <button class="btn tool primary" id="btnFindHouse" type="button" title="دوّر على بيتك">🔍 دوّر على بيتك</button>
+          <button class="btn tool" id="btnPlaces" type="button" title="الجامع والمطعم">📍 أماكن</button>
           <button class="btn tool" id="btnWeddingCam" type="button" title="كاميرا العرس">💃 العرس</button>
           <button class="btn tool" id="btnWeddingSound" type="button" title="تشغيل الأغنية"><span class="ico">🔊</span> الصوت</button>
           <button class="btn icon" id="btnWeddingPrev" type="button" title="الأغنية السابقة">‹</button>
@@ -440,6 +478,14 @@
     </div>
   </div>
   <div id="meteorBanner" hidden dir="rtl"></div>
+  <div id="houseCard" class="panel" hidden dir="rtl" role="dialog" aria-label="بيتك">
+    <button id="houseCardClose" type="button" aria-label="سكّر">✕</button>
+    <div class="hc-kicker">🏡 لقينا بيتك</div>
+    <div class="hc-name"></div>
+    <div class="hc-meta"><span class="hc-num"></span><span class="hc-level"></span></div>
+    <button id="houseCardShare" class="btn primary" type="button">📤 شارك بيتك</button>
+  </div>
+  <div id="shareToast" class="panel" hidden></div>
   <script>
     (function () {
       function arNum(n) { return String(n).replace(/[0-9]/g, function (d) { return '٠١٢٣٤٥٦٧٨٩'[d]; }); }

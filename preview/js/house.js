@@ -110,6 +110,15 @@ export function styleFromName(name) {
   };
 }
 
+// One material set per palette for baked (instanced) houses: they are only read.
+const _bakeMats = new Map();
+export function bakeMatsFor(palette) {
+  const k = palette ? palette.id : 'sand';
+  let m = _bakeMats.get(k);
+  if (!m) { m = makeMats(palette); _bakeMats.set(k, m); }
+  return m;
+}
+
 function hexCol(n) {
   return '#' + (n >>> 0).toString(16).padStart(6, '0');
 }
@@ -194,19 +203,55 @@ function add(mesh, parent, x, y, z, rx = 0, ry = 0, rz = 0) {
   return mesh;
 }
 
+// Bake mode (preview perf): houses that are drawn through the instanced house
+// field are only *read* (geometry + material + local matrix), never rendered
+// directly, so primitives share one cached geometry per parameter set and boxes
+// use a unit box scaled by (w, h, d). The resulting picture is identical.
+let BAKE = false;
+export function setBakeMode(on) { BAKE = !!on; }
+const _geoCache = new Map();
+export const UNIT_BOX = new THREE.BoxGeometry(1, 1, 1);
+function cachedGeo(key, make) {
+  let g = _geoCache.get(key);
+  if (!g) { g = make(); g.userData.shared = true; _geoCache.set(key, g); }
+  return g;
+}
+function r4(n) { return Math.round(n * 1e4) / 1e4; }
+
 function box(mat, w, h, d, parent, x, y, z, rx, ry, rz) {
+  if (BAKE) {
+    const m = add(new THREE.Mesh(UNIT_BOX, mat), parent, x, y, z, rx, ry, rz);
+    m.scale.set(w, h, d);
+    return m;
+  }
   return add(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat), parent, x, y, z, rx, ry, rz);
 }
 
 function cyl(mat, rTop, rBot, h, segs, parent, x, y, z, rx, ry, rz) {
+  if (BAKE) {
+    const g = cachedGeo(`cyl|${r4(rTop)}|${r4(rBot)}|${r4(h)}|${segs}`, () => new THREE.CylinderGeometry(rTop, rBot, h, segs));
+    return add(new THREE.Mesh(g, mat), parent, x, y, z, rx, ry, rz);
+  }
   return add(new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBot, h, segs), mat), parent, x, y, z, rx, ry, rz);
 }
 
 function sph(mat, r, segs, parent, x, y, z) {
+  if (BAKE) {
+    const g = cachedGeo(`sph|${segs}`, () => new THREE.SphereGeometry(1, segs, segs));
+    const m = add(new THREE.Mesh(g, mat), parent, x, y, z);
+    m.scale.set(r, r, r);
+    return m;
+  }
   return add(new THREE.Mesh(new THREE.SphereGeometry(r, segs, segs), mat), parent, x, y, z);
 }
 
 function cone(mat, r, h, segs, parent, x, y, z) {
+  if (BAKE) {
+    const g = cachedGeo(`cone|${segs}`, () => new THREE.ConeGeometry(1, 1, segs));
+    const m = add(new THREE.Mesh(g, mat), parent, x, y, z);
+    m.scale.set(r, h, r);
+    return m;
+  }
   return add(new THREE.Mesh(new THREE.ConeGeometry(r, h, segs), mat), parent, x, y, z);
 }
 
@@ -354,7 +399,12 @@ function fountain(mats, parent, x, y, z, scale = 1) {
   sph(mats.waterFoam, 0.1 * scale, 6, parent, x, y + 1.15 * scale, z);
 }
 
+let _tentGeo = null;
 function tentGeometry() {
+  if (BAKE) return _tentGeo || (_tentGeo = tentGeometryRaw());
+  return tentGeometryRaw();
+}
+function tentGeometryRaw() {
   const shape = new THREE.Shape();
   shape.moveTo(-1.5, 0);
   shape.lineTo(0, 2.15);
@@ -570,8 +620,9 @@ function makeFacadeMaps(style, floors, bays, litBoost) {
 }
 
 function facadeBox(mat, w, h, d, parent, x, y, z, ry = 0) {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  const mesh = new THREE.Mesh(BAKE ? UNIT_BOX : new THREE.BoxGeometry(w, h, d), mat);
   add(mesh, parent, x, y, z, 0, ry, 0);
+  if (BAKE) mesh.scale.set(w, h, d);
   return mesh;
 }
 
@@ -941,7 +992,7 @@ function buildTower(L, mats, style, g) {
   return { topY: topY + crownH, fw: bw, fd: bd };
 }
 
-function buildHouseAtLevel(level, mats, style) {
+export function buildHouseAtLevel(level, mats, style) {
   const g = new THREE.Group();
   const L = Math.max(1, Math.min(30, level | 0));
 
@@ -1003,7 +1054,7 @@ function buildHouseAtLevel(level, mats, style) {
 
 function disposeInner(root) {
   root.traverse((o) => {
-    if (o.geometry) o.geometry.dispose();
+    if (o.geometry && !(o.geometry.userData && o.geometry.userData.shared) && o.geometry !== UNIT_BOX) o.geometry.dispose();
     // do not dispose shared / cached materials
   });
 }
@@ -1013,7 +1064,7 @@ export function createHouse(opts = {}) {
   let seedName = opts.seed || opts.name || 'mohammad_1';
   let style = styleFromName(seedName);
   let mats = makeMats(style.palette);
-  let level = 1;
+  let level = Math.max(1, Math.min(30, (opts.level | 0) || 1));
   let inner = buildHouseAtLevel(level, mats, style);
   applyShadowFlags(inner);
   root.add(inner);

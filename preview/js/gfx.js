@@ -8,27 +8,57 @@ import { RenderPass } from '../vendor/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from '../vendor/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from '../vendor/postprocessing/OutputPass.js';
 
-export function detectQuality() {
-  let q = '';
-  try { q = (new URLSearchParams(location.search).get('q') || '').toLowerCase(); } catch { /* */ }
-  if (q === 'low' || q === 'mid' || q === 'high') return q;
+// Device profile (computed once). Phones get lighter defaults; weak phones the lightest.
+export const DEVICE = (() => {
   const nav = typeof navigator !== 'undefined' ? navigator : {};
   const cores = nav.hardwareConcurrency || 4;
   const mem = nav.deviceMemory || 4;
   const save = !!(nav.connection && nav.connection.saveData);
-  const mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(nav.userAgent || '') || (typeof window !== 'undefined' && Math.min(window.innerWidth, window.innerHeight) < 600);
-  if (save || cores <= 2 || mem <= 2) return 'low';
-  return mobile ? 'mid' : 'high';
+  const ua = nav.userAgent || '';
+  const touch = (typeof window !== 'undefined') && (('ontouchstart' in window) || (nav.maxTouchPoints || 0) > 1);
+  const small = (typeof window !== 'undefined') && Math.min(window.innerWidth, window.innerHeight) < 600;
+  const mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || (touch && small) || (/Macintosh/.test(ua) && touch);
+  const weak = save || cores <= 4 && mobile && mem <= 3 || cores <= 2 || mem <= 2;
+  let forced = '';
+  try { forced = (new URLSearchParams(location.search).get('q') || '').toLowerCase(); } catch { /* */ }
+  if (!['low', 'mid', 'high'].includes(forced)) forced = '';
+  return { cores, mem, save, mobile, weak, forced };
+})();
+
+export function detectQuality() {
+  if (DEVICE.forced) return DEVICE.forced;
+  if (DEVICE.weak) return 'low';
+  return DEVICE.mobile ? 'mid' : 'high';
 }
 
+// nearR / nearMax: houses drawn with the full model (others are box stand-ins).
+// labels: name tags in the DOM pool. particles / birds: share of the desktop amount.
 export const QUALITY_SETTINGS = {
-  low: { pixelRatio: 1, shadows: false, shadowSize: 0, bloom: false, streetTrees: 0.4 },
-  mid: { pixelRatio: 1.5, shadows: true, shadowSize: 1024, bloom: false, streetTrees: 0.75 },
-  high: { pixelRatio: 1.75, shadows: true, shadowSize: 2048, bloom: true, streetTrees: 1 },
+  low: { pixelRatio: 1, shadows: false, shadowSize: 0, bloom: false, streetTrees: 0.4, pointLights: false, terrainStride: 2, nearR: 120, nearMax: 220, labels: 36, particles: 0.35, birds: 0.3, interiorR: 70 },
+  mid: { pixelRatio: 1.5, shadows: true, shadowSize: 1024, bloom: false, streetTrees: 0.75, pointLights: true, terrainStride: 1, nearR: 320, nearMax: 1200, labels: 50, particles: 0.7, birds: 0.7, interiorR: 110 },
+  high: { pixelRatio: 1.75, shadows: true, shadowSize: 2048, bloom: true, streetTrees: 1, pointLights: true, terrainStride: 1, nearR: 1200, nearMax: 3000, labels: 60, particles: 1, birds: 1, interiorR: 140 },
+};
+// Extra limits on phones (on top of the tier, also when ?q= forces a tier).
+const MOBILE_CAPS = {
+  low: { pixelRatio: 1 },
+  mid: { pixelRatio: 1.5, shadowSize: 512, bloom: false, pointLights: false, terrainStride: 2, nearR: 170, nearMax: 360, labels: 40, particles: 0.45, birds: 0.4, streetTrees: 0.6, interiorR: 80 },
+  high: { pixelRatio: 1.5, shadowSize: 1024, bloom: false, pointLights: false, nearR: 240, nearMax: 600, labels: 50, particles: 0.6, birds: 0.6, interiorR: 100 },
 };
 
+export function qualitySettings(quality) {
+  const base = { ...(QUALITY_SETTINGS[quality] || QUALITY_SETTINGS.mid) };
+  if (DEVICE.mobile) Object.assign(base, MOBILE_CAPS[quality] || {});
+  if (DEVICE.weak) base.pixelRatio = Math.min(base.pixelRatio, 1);
+  base.mobile = DEVICE.mobile;
+  base.name = quality;
+  return base;
+}
+
+// Shared, importable profile for modules that size particle systems at creation.
+export const PERF = qualitySettings(detectQuality());
+
 export function setupRenderer(renderer, quality) {
-  const qs = QUALITY_SETTINGS[quality] || QUALITY_SETTINGS.mid;
+  const qs = qualitySettings(quality);
   renderer.toneMapping = quality === 'low' ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.0;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -190,4 +220,35 @@ export function plankTexture() {
   _plank.colorSpace = THREE.SRGBColorSpace;
   _plank.wrapS = _plank.wrapT = THREE.RepeatWrapping;
   return _plank;
+}
+
+// Adaptive quality: if the frame rate stays under 30 fps, step quality down
+// (bloom → shadows → pixel ratio → fewer detailed houses / labels). Never steps up.
+export function createAdaptiveQuality({ steps, minFps = 30, windowMs = 2000, badWindows = 2, graceMs = 5000 }) {
+  let t0 = 0, frames = 0, bad = 0, level = 0, started = 0, lastFps = 0;
+  const log = [];
+  return {
+    get level() { return level; },
+    get fps() { return lastFps; },
+    log,
+    frame(now) {
+      if (!started) { started = now; t0 = now; return; }
+      if (now - started < graceMs) { t0 = now; frames = 0; return; }
+      frames++;
+      const dt = now - t0;
+      if (dt < windowMs) return;
+      const fps = (frames * 1000) / dt;
+      lastFps = fps;
+      t0 = now; frames = 0;
+      if (dt > windowMs * 3) return; // tab was hidden / stalled: ignore
+      if (fps < minFps) bad++; else bad = 0;
+      if (bad >= badWindows && level < steps.length) {
+        const s = steps[level++];
+        bad = 0;
+        try { s.apply(); } catch (e) { console.warn('adaptive step failed', e); }
+        log.push({ step: s.name, fps: Math.round(fps), at: Math.round(now) });
+        started = now; // let it settle before judging again
+      }
+    },
+  };
 }

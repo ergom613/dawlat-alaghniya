@@ -14,9 +14,14 @@ import { initOwner } from './owner.js';
 import { createCrowd } from './crowd.js';
 import { createWedding } from './wedding.js';
 import { createMeteorEvent } from './meteor.js';
-import { detectQuality, setupRenderer, setupSunShadow, followSun, createComposer, makeWaterMaterial, enableShadows } from './gfx.js';
+import { detectQuality, setupRenderer, setupSunShadow, followSun, createComposer, makeWaterMaterial, enableShadows, DEVICE, createAdaptiveQuality } from './gfx.js';
+import { createHouseField } from './houseField.js';
+import { mergeStaticMeshes } from './merge.js';
 import { setHouseShadows } from './house.js';
-import { createUniversity, createRestaurant, createStadiumMarker } from './landmarks.js';
+import { createRestaurant, createStadiumMarker } from './landmarks.js';
+import { createMosque } from './mosque.js';
+import { buildRoadGraph } from './roads.js';
+import { UNIVERSITY as MOSQUE_RECT, DABKE, RESTAURANT } from './layout.js';
 import { loadTerrain, getHeight, buildTerrainMesh, terrainAttribution, LAND_H } from './terrain.js';
 
 const params = new URLSearchParams(location.search);
@@ -83,7 +88,7 @@ let dayNight = null, lamps = null, crowd = null, birds = null, weather = null, c
 let allResidents = [];
 let selectedResident = null;
 let interiorCam = false, placeIdx = -1;
-let QUALITY = 'mid', QS = null, composer = null, university = null, restaurant = null, stadiumMarker = null;
+let QUALITY = 'mid', QS = null, composer = null, mosque = null, restaurant = null, stadiumMarker = null;
 let plotTents = []; // full procedural tents + tags for real residents (not the selected hero)
 let crowdTags = [];
 let promoCrowdLabels = false;
@@ -92,6 +97,17 @@ let camMode = 'free'; // free | house | yacht | car
 let lastSky = { tod: 0.45, night: 0, glow: 0 };
 let lastFps = 0, fpsFrames = 0, fpsT0 = 0;
 let lastTick = 0;
+let houseField = null;            // instanced follower houses (preview perf)
+let labelPool = [];               // pooled DOM name tags (nearest N houses only)
+let labelActive = [];             // [{ item, tag }] assigned this frame
+let labelNeighbours = [];         // nearest on-screen houses (for the overlap test)
+let plotByResidentId = new Map();
+let allPlots = [];                // every resident's field house (plotTents = all but the hero)
+let plotFieldKey = '';
+let meteorCooldown = 0;
+let adaptive = null;
+let interiors = [];               // [{ group, center: Vector3, alwaysWhen: fn }]
+let searchPick = null;            // resident picked via «دوّر على بيتك» (label always shown)
 
 function groundY(x, z) {
   const h = getHeight(x, z);
@@ -305,7 +321,7 @@ function buildMap(data) {
 
   // Flat land at sea level (LAND_H, just above the water). The heightmap is
   // only a land/sea mask plus land classes — no mountains. No houses on the sea.
-  mapRoot.add(buildTerrainMesh());
+  mapRoot.add(buildTerrainMesh((QS && QS.terrainStride) || 1));
 
   // Sharp OSM overlays on the flat plane so parks, beaches and the city
   // footprint stay crisp (the mask is 25 m).
@@ -411,48 +427,89 @@ function updateHouseTagPos() {
 }
 
 function clearPlotTents() {
-  for (const item of plotTents) {
-    if (item.house && item.house.group) scene.remove(item.house.group);
-    if (item.tag) item.tag.remove();
+  for (const item of allPlots) {
+    if (item.house && item.house.group && item.house.group.parent) item.house.group.parent.remove(item.house.group);
   }
   plotTents = [];
+  allPlots = [];
+  plotByResidentId = new Map();
 }
 
+// Every resident except the selected hero gets a house in the instanced field
+// (full model near the camera, box stand-in far away). Re-selecting a resident
+// only swaps which house is hidden instead of rebuilding the whole city.
 function placePlotTents() {
-  clearPlotTents();
-  if (DEMO_N > 1 || MODE !== 'map' || !allResidents.length) return;
+  if (DEMO_N > 1 || MODE !== 'map' || !allResidents.length) { clearPlotTents(); return; }
   ensureLabels();
   const selI = selectedResident ? selectedResident.i : 0;
-  for (const r of allResidents) {
-    if (r.i === selI) continue; // the hero house already stands on this plot
-    const h = createHouse({ seed: r.seed || r.name || ('house_' + r.id) });
-    h.setLevel(r.level || 1);
-    h.setLocalExtrasVisible(false);
-    h.group.position.set(r.x, groundY(r.x, r.z) + 0.12, r.z);
-    if (h.setNightFactor) h.setNightFactor(lastSky.night || 0);
-    scene.add(h.group);
-    const tag = labelLayer.add('');
-    tag.set(publicLabel(r), publicSub(r));
-    const hh = h.getHeight ? h.getHeight() : heightForLevel(r.level || 1);
-    tag.setWorld(r.x, groundY(r.x, r.z) + 0.12 + hh + TAG_LIFT, r.z);
-    tag.show(true);
-    plotTents.push({ i: r.i, resident: r, house: h, tag });
+  const key = allResidents.map((r) => `${r.id}:${r.level || 1}:${r.seed || r.name || ''}:${r.x}:${r.z}`).join('|');
+  if (!houseField) {
+    houseField = createHouseField({ scene, quality: QS, shadows: !!QS.shadows });
   }
+  if (key !== plotFieldKey) {
+    plotFieldKey = key;
+    clearPlotTents();
+    const list = allResidents.map((r) => ({
+      i: r.i, id: r.id, seed: r.seed || r.name || ('house_' + r.id), level: r.level || 1,
+      x: r.x, y: groundY(r.x, r.z) + 0.12, z: r.z,
+    }));
+    const proxies = houseField.setHouses(list);
+    allResidents.forEach((r, k) => {
+      const item = { i: r.i, resident: r, house: proxies[k], tag: null };
+      allPlots.push(item);
+      plotByResidentId.set(r.id, item);
+    });
+  }
+  // plotTents keeps its old meaning: every house except the selected hero.
+  for (const item of allPlots) item.hidden = item.i === selI;
+  plotTents = allPlots.filter((it) => !it.hidden);
+  houseField.setOnlyHidden(selI);
+  houseField.update(camera, { force: true });
 }
 
+// Pooled name tags: only the nearest on-screen houses get a DOM label.
+const _lv = new THREE.Vector3();
 function updatePlotTentTags() {
-  if (!plotTents.length) return;
+  labelActive = [];
+  labelNeighbours = [];
+  if (!plotTents.length || !labelLayer) return;
+  const N = (QS && QS.labels) || 50;
+  while (labelPool.length < N) { const t = labelLayer.add(''); t.show(false); t._key = ''; labelPool.push(t); }
   const dist = (camera && controls) ? camera.position.distanceTo(controls.target) : 0;
   const show = dist <= 480;
+  if (!show) { for (const t of labelPool) if (t.visible) t.show(false); return; }
+  camera.updateMatrixWorld();
+  const cp = camera.position;
+  const cand = [];
+  const maxD = 520;
   for (const item of plotTents) {
-    if (!item.tag || !item.house) continue;
-    const wp = new THREE.Vector3();
-    item.house.group.getWorldPosition(wp);
+    if (item.hidden || !item.house || !item.house.group.visible) continue;
+    const g = item.house.group.position;
+    const dx = g.x - cp.x, dz = g.z - cp.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 > maxD * maxD) continue;
     const hh = item.house.getHeight();
-    item.tag.setWorld(wp.x, wp.y + hh + TAG_LIFT, wp.z);
-    item.tag.show(show && item.house.group.visible);
-    if (item.house.tick) item.house.tick(clock ? clock.elapsedTime : 0);
+    _lv.set(g.x, g.y + hh + TAG_LIFT, g.z).project(camera);
+    if (_lv.z < -1 || _lv.z > 1 || _lv.x < -1.1 || _lv.x > 1.1 || _lv.y < -1.1 || _lv.y > 1.15) continue;
+    cand.push({ item, d2, hh });
   }
+  cand.sort((a, b) => a.d2 - b.d2);
+  labelNeighbours = cand.slice(0, Math.max(N * 3, 120));
+  const used = new Set();
+  const n = Math.min(N, cand.length);
+  for (let k = 0; k < n; k++) {
+    const { item, hh } = cand[k];
+    const tag = labelPool[k];
+    const r = item.resident;
+    const key = String(r.id);
+    if (tag._key !== key) { tag.set(publicLabel(r), publicSub(r)); tag._key = key; }
+    const g = item.house.group.position;
+    tag.setWorld(g.x, g.y + hh + TAG_LIFT, g.z);
+    tag.show(true);
+    used.add(tag);
+    labelActive.push({ item, tag });
+  }
+  for (const t of labelPool) if (!used.has(t) && t.visible) t.show(false);
 }
 
 function frameAllResidents() {
@@ -1004,6 +1061,246 @@ function searchResident(q) {
     foundMsg.hidden = false;
   }
   return false;
+}
+
+/* ---------- «🔍 دوّر على بيتك»: live search, label card, deep links ---------- */
+const AR_DIGITS = '٠١٢٣٤٥٦٧٨٩', FA_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
+function normSearch(v) {
+  let t = String(v == null ? '' : v).toLowerCase().trim();
+  t = t.replace(/[٠-٩]/g, (d) => String(AR_DIGITS.indexOf(d))).replace(/[۰-۹]/g, (d) => String(FA_DIGITS.indexOf(d)));
+  t = t.replace(/[\u064B-\u065F\u0670\u0640]/g, '');           // harakat + tatweel
+  t = t.replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/ؤ/g, 'و').replace(/ئ/g, 'ي');
+  t = t.replace(/^@+/, '').replace(/^(بيت\s*(رقم)?\s*|house\s*#?\s*|#)/, '');
+  return t.replace(/\s+/g, ' ').trim();
+}
+function residentSearchText(r) {
+  return [r.name, r.label, r.seed && !r.anonymous ? r.seed : ''].filter(Boolean).map(normSearch);
+}
+function searchSuggestions(q, limit = 8) {
+  const s = normSearch(q);
+  if (!s) return [];
+  const isNum = /^\d+$/.test(s);
+  const out = [];
+  for (const r of allResidents) {
+    let score = -1;
+    const id = String(r.id);
+    if (isNum) {
+      if (id === s) score = 100;
+      else if (id.startsWith(s)) score = 60 - id.length;
+    }
+    if (score < 0 && !r.anonymous) {
+      for (const t of residentSearchText(r)) {
+        if (!t) continue;
+        if (t === s) { score = Math.max(score, 90); break; }
+        if (t.startsWith(s)) score = Math.max(score, 70);
+        else if (t.includes(s)) score = Math.max(score, 40);
+        else if (t.replace(/[._\-\s]/g, '').includes(s.replace(/[._\-\s]/g, ''))) score = Math.max(score, 30);
+      }
+    }
+    if (score >= 0) out.push({ r, score });
+  }
+  out.sort((a, b) => b.score - a.score || a.r.id - b.r.id);
+  return out.slice(0, limit).map((o) => o.r);
+}
+function findResident(q) {
+  if (q == null || q === '') return null;
+  const list = searchSuggestions(q, 1);
+  return list[0] || null;
+}
+function houseShareUrl(r) {
+  const u = new URL(location.href);
+  u.search = '';
+  u.hash = '';
+  u.searchParams.set('house', String(r.id));
+  return u.toString();
+}
+function levelName(level) {
+  const info = levelsData[(level || 1) - 1];
+  return info ? info.ar : '';
+}
+function showHouseCard(r) {
+  const card = $('houseCard');
+  if (!card || !r) return;
+  card.querySelector('.hc-name').textContent = publicLabel(r);
+  card.querySelector('.hc-num').textContent = 'بيت رقم ' + arNum(r.id);
+  const ln = levelName(r.level);
+  card.querySelector('.hc-level').textContent = 'لفل ' + arNum(r.level || 1) + (ln ? ' · ' + ln : '');
+  card.dataset.id = String(r.id);
+  card.hidden = false;
+}
+function hideHouseCard() {
+  const card = $('houseCard');
+  if (card) card.hidden = true;
+  searchPick = null;
+  if (houseTag && houseTag.el) houseTag.el.classList.remove('picked');
+}
+// Fly to a resident's house (camera stays free so people can look around).
+function goToResident(r, { instant = false } = {}) {
+  if (!r) return false;
+  if (tour && tour.pause) tour.pause();
+  if (wedding && wedding.isCam && wedding.isCam() && wedding.exitCam) wedding.exitCam();
+  interiorCam = false; placeIdx = -1;
+  selectResident(r, false);
+  setCamMode('free', true);
+  const v = houseCamera(r.level || currentLevel, { x: r.x, z: r.z });
+  if (instant) {
+    camera.position.copy(v.pos); controls.target.copy(v.target); controls.update();
+  } else flyTo(v.pos, v.target, 1.8);
+  searchPick = r;
+  if (houseTag) { houseTag.show(true); if (houseTag.el) houseTag.el.classList.add('picked'); }
+  showHouseCard(r);
+  if (foundMsg) foundMsg.hidden = true;
+  notifyHouseFound(r, instant ? 0 : 1850);
+  return true;
+}
+
+// ---- public hooks for add-ons (walker.js): house found, places, roads ----
+let roadGraph = null, houseFoundTimer = 0;
+function getRoadGraph() {
+  if (roadGraph) return roadGraph;
+  const segs = [];
+  if (blockStreets) segs.push(...(blockStreets.segs || []), ...(blockStreets.access || []));
+  // wedding plaza road stub (dabke plaza edge → its own access road start)
+  segs.push({ x1: DABKE.x + DABKE.size / 2 + 1, z1: DABKE.z, x2: DABKE.x + 40, z2: DABKE.z });
+  roadGraph = buildRoadGraph(segs);
+  return roadGraph;
+}
+function v3(x, z, lift = 0) { return { x, y: (typeof groundY === 'function' ? groundY(x, z) : 2.6) + lift, z }; }
+function houseFoundInfo(r) {
+  if (!r) return null;
+  const p = house && house.group ? house.group.position : null;
+  const x = p ? p.x : r.x, z = p ? p.z : r.z;
+  const g = getRoadGraph();
+  const road = g.nearestOnRoad(x, z);
+  let door = v3(x, z), roadPoint = null, facing = 0;
+  if (road && road.dist > 0.5) {
+    const dx = (road.x - x) / road.dist, dz = (road.z - z) / road.dist;
+    const pad = (house && house.getPad && house.getPad()) || null;
+    const half = pad ? Math.min(pad.w || 6, pad.d || 6) / 2 + 0.6 : 3.6;
+    const dd = Math.min(road.dist - 1.5, half);
+    door = v3(x + dx * dd, z + dz * dd);
+    roadPoint = v3(road.x, road.z);
+    facing = Math.atan2(dx, dz); // rotation.y that faces the street
+  }
+  return {
+    num: r.id, id: r.id, name: publicLabel(r), username: r.anonymous ? '' : (r.name || ''),
+    level: r.level || 1,
+    position: v3(x, z), door, roadPoint, facing,
+    resident: r,
+  };
+}
+function notifyHouseFound(r, delay) {
+  clearTimeout(houseFoundTimer);
+  houseFoundTimer = setTimeout(() => {
+    const info = houseFoundInfo(r);
+    if (!info) return;
+    window.lastHouseFound = info;
+    try { if (typeof window.onHouseFound === 'function') window.onHouseFound(info); } catch (e) { console.warn('onHouseFound', e); }
+    try { window.dispatchEvent(new CustomEvent('housefound', { detail: info })); } catch { /* */ }
+  }, delay);
+}
+function exposeCityHooks() {
+  const U = MOSQUE_RECT, R = RESTAURANT;
+  const mk = (key, name, center, entrance, inside) => ({ key, name, position: v3(center.x, center.z), entrance: v3(entrance.x, entrance.z), inside: v3(inside.x, inside.z) });
+  window.cityPlaces = {
+    mosque: mk('mosque', 'جامع دولة الأغنياء', { x: U.x, z: U.z }, { x: U.x, z: U.z + U.d / 2 + 1 }, { x: U.x, z: U.z + 18 }),
+    wedding: mk('wedding', 'العرس · ساحة الدبكة', { x: DABKE.x, z: DABKE.z }, { x: DABKE.x + DABKE.size / 2 + 1, z: DABKE.z }, { x: DABKE.x + 14, z: DABKE.z }),
+    restaurant: mk('restaurant', 'مطعم البحر', { x: R.x, z: R.z }, { x: R.x - R.w / 2 - 1, z: R.z }, { x: R.x - R.w / 2 + 6, z: R.z }),
+  };
+  window.cityRoads = {
+    get graph() { return getRoadGraph(); },
+    segments: () => getRoadGraph().segments.slice(),
+    nearest: (x, z) => getRoadGraph().nearestOnRoad(x, z),
+    // waypoints({x,z},{x,z}) → [{x,y,z}] along the streets (y = ground height)
+    waypoints: (from, to) => getRoadGraph().waypoints(from, to).map((p) => v3(p.x, p.z)),
+    // convenience: house door → place entrance → a few metres inside
+    routeToPlace: (from, key) => {
+      const pl = window.cityPlaces[key];
+      if (!pl) return null;
+      const pts = getRoadGraph().waypoints(from, pl.entrance).map((p) => v3(p.x, p.z));
+      pts.push(pl.inside);
+      return pts;
+    },
+    groundY: (x, z) => (typeof groundY === 'function' ? groundY(x, z) : 2.6),
+  };
+}
+async function shareHouse(r) {
+  const url = houseShareUrl(r);
+  const title = 'دولة الأغنياء';
+  const text = `هاد بيتي بدولة الأغنياء 🏡 ${publicLabel(r)} · بيت رقم ${arNum(r.id)}`;
+  const toast = (msg) => { const t = $('shareToast'); if (!t) return; t.textContent = msg; t.hidden = false; clearTimeout(t._h); t._h = setTimeout(() => { t.hidden = true; }, 2200); };
+  try {
+    if (navigator.share) { await navigator.share({ title, text, url }); return 'shared'; }
+  } catch (e) { if (e && e.name === 'AbortError') return 'cancel'; }
+  try {
+    await navigator.clipboard.writeText(url);
+    toast('انسخ الرابط ✅ ابعتو لرفقاتك');
+    return 'copied';
+  } catch (e) {
+    window.prompt('انسخ رابط بيتك:', url);
+    return 'prompt';
+  }
+}
+function bindHouseSearch() {
+  const input = $('search');
+  const box = $('searchSuggest');
+  const form = $('searchForm');
+  if (!input || !box) return;
+  let items = [], active = -1;
+  const render = () => {
+    box.innerHTML = '';
+    items.forEach((r, k) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'sg' + (k === active ? ' on' : '');
+      b.setAttribute('role', 'option');
+      const n = document.createElement('bdi'); n.textContent = publicLabel(r);
+      const sm = document.createElement('small'); sm.textContent = 'بيت رقم ' + arNum(r.id) + ' · لفل ' + arNum(r.level || 1);
+      b.append(n, sm);
+      b.addEventListener('pointerdown', (e) => { e.preventDefault(); pick(r); });
+      box.appendChild(b);
+    });
+    if (!items.length && normSearch(input.value)) {
+      const d = document.createElement('div'); d.className = 'sg-none'; d.textContent = 'ما لقينا بيت بهالاسم 🤔'; box.appendChild(d);
+    }
+    box.hidden = !normSearch(input.value);
+  };
+  const pick = (r) => {
+    input.value = r.anonymous ? String(r.id) : (r.name || String(r.id));
+    box.hidden = true;
+    input.blur();
+    goToResident(r);
+  };
+  input.addEventListener('input', () => { items = searchSuggestions(input.value); active = items.length ? 0 : -1; render(); });
+  input.addEventListener('focus', () => { if (normSearch(input.value)) { items = searchSuggestions(input.value); render(); } });
+  input.addEventListener('blur', () => setTimeout(() => { box.hidden = true; }, 150));
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') { active = Math.min(items.length - 1, active + 1); render(); e.preventDefault(); }
+    else if (e.key === 'ArrowUp') { active = Math.max(0, active - 1); render(); e.preventDefault(); }
+    else if (e.key === 'Escape') { box.hidden = true; }
+  });
+  if (form) form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const r = items[active] || findResident(input.value);
+    if (r) pick(r);
+    else { items = []; render(); }
+  }, true);
+  const open = $('btnFindHouse');
+  if (open) open.addEventListener('click', () => { input.focus(); input.select(); });
+  const close = $('houseCardClose');
+  if (close) close.addEventListener('click', hideHouseCard);
+  const share = $('houseCardShare');
+  if (share) share.addEventListener('click', () => { const r = allResidents.find((x) => String(x.id) === $('houseCard').dataset.id); if (r) shareHouse(r); });
+}
+function applyDeepLink() {
+  if (MODE !== 'map' || RECORD) return;
+  const h = params.get('house');
+  const n = START_EVENT === 'meteor' ? null : params.get('name');
+  let r = null;
+  if (h) r = allResidents.find((x) => String(x.id) === normSearch(h)) || null;
+  if (!r && n) r = findResident(n);
+  if (r) goToResident(r, { instant: true });
 }
 
 function displayHandle(r) {
@@ -1893,58 +2190,61 @@ function cullHouseLabels() {
   const w = rect.width || window.innerWidth;
   const h = rect.height || window.innerHeight;
   const houses = [];
+  const wp = new THREE.Vector3();
 
-  function pushHouse(tag, group, getHeight, getPad, name) {
-    if (!tag || !group || !group.visible) return;
-    const wp = new THREE.Vector3();
+  function makeHouse(tag, group, hh, pad, name) {
     group.getWorldPosition(wp);
-    const hh = getHeight ? getHeight() : 3.2;
-    const pad = getPad ? getPad() : { w: 10, d: 10 };
     const roof = projectWorld(wp.x, wp.y + hh, wp.z, w, h);
     const ground = projectWorld(wp.x, wp.y, wp.z, w, h);
     const padL = projectWorld(wp.x - (pad.w || 10) * 0.5, wp.y, wp.z, w, h);
     const padR = projectWorld(wp.x + (pad.w || 10) * 0.5, wp.y, wp.z, w, h);
-    houses.push({
+    return {
       tag, name: name || '',
       roof, ground,
       padHalf: Math.max(10, Math.abs(padR.x - padL.x) * 0.5),
       screenH: Math.abs(ground.y - roof.y),
       camDist: camera.position.distanceTo(wp),
-    });
+    };
   }
 
-  if (house && houseTag) pushHouse(houseTag, house.group, () => house.getHeight(), () => house.getPad && house.getPad(), (selectedResident && selectedResident.name) || '');
-  for (const item of plotTents) {
-    if (!item.house || !item.tag) continue;
-    pushHouse(item.tag, item.house.group, () => item.house.getHeight(), () => item.house.getPad && item.house.getPad(), item.resident && item.resident.name);
+  let heroH = null;
+  if (house && houseTag && house.group.visible) {
+    heroH = makeHouse(houseTag, house.group, house.getHeight(), (house.getPad && house.getPad()) || { w: 10, d: 10 }, (selectedResident && selectedResident.name) || '');
+    houses.push(heroH);
   }
+  const byItem = new Map();
+  for (const c of labelNeighbours) {
+    const it = c.item;
+    const hObj = makeHouse(null, it.house.group, c.hh, it.house.getPad() || { w: 10, d: 10 }, it.resident && it.resident.name);
+    byItem.set(it, hObj);
+    houses.push(hObj);
+  }
+  for (const a of labelActive) { const hObj = byItem.get(a.item); if (hObj) hObj.tag = a.tag; }
 
   const hide = (tag) => { if (tag && tag.show) tag.show(false); else if (tag && tag.el) tag.el.style.display = 'none'; };
-
+  // Phase 1: read every label box (one layout pass), phase 2: decide + hide.
+  const checks = [];
   for (const a of houses) {
     if (!a.tag || !a.tag.visible || !a.tag.inView) continue;
     const el = a.tag.el;
     if (!el || el.style.display === 'none') continue;
-    const br = el.getBoundingClientRect();
+    checks.push({ a, br: el.getBoundingClientRect() });
+  }
+  const pinned = (a) => a === heroH && !!searchPick;
+  for (const { a, br } of checks) {
+    if (pinned(a)) continue; // the house picked in «دوّر على بيتك» always keeps its label
     if (br.width < 2 || br.height < 2) { hide(a.tag); continue; }
     const lx = (br.left + br.right) / 2;
     const lyBot = br.bottom;
-
-    // Tent itself must be a readable size and on screen.
-    if (!a.roof.inView || a.screenH < 16 || a.roof.y < 4 || a.ground.y > h - 4) {
-      hide(a.tag);
-      continue;
-    }
-    // Label must sit above this tent: x-aligned, bottom near the roof, not sunk into the pad.
+    if (!a.roof.inView || a.screenH < 16 || a.roof.y < 4 || a.ground.y > h - 4) { hide(a.tag); continue; }
     const maxDx = Math.max(26, a.padHalf * 0.85, a.screenH * 0.65);
     if (Math.abs(lx - a.roof.x) > maxDx) { hide(a.tag); continue; }
     if (lyBot > a.ground.y - 2) { hide(a.tag); continue; }
     if (lyBot < a.roof.y - Math.max(90, a.screenH * 1.8)) { hide(a.tag); continue; }
-
     let drop = false;
+    const dOwn = Math.hypot(lx - a.roof.x, lyBot - a.roof.y);
     for (const b of houses) {
       if (b === a) continue;
-      const dOwn = Math.hypot(lx - a.roof.x, lyBot - a.roof.y);
       const dOther = Math.hypot(lx - b.roof.x, lyBot - b.roof.y);
       if (b.roof.inView && dOther + 10 < dOwn) { drop = true; break; }
       const half = Math.max(14, b.padHalf, b.screenH * 0.6);
@@ -1968,7 +2268,7 @@ function celebrationHouses() {
       height = house.getHeight ? house.getHeight() : heightForLevel(level);
       y = house.group.position.y + height;
     } else {
-      const item = (plotTents || []).find((it) => it.resident && it.resident.id === r.id);
+      const item = plotByResidentId.get(r.id);
       if (item && item.house && item.house.group) {
         x = item.house.group.position.x;
         z = item.house.group.position.z;
@@ -2009,17 +2309,17 @@ function updateGfx() {
   }
   if (composer) composer.setNight(night);
   if (blockStreets && blockStreets.setNight) blockStreets.setNight(night);
-  if (university) university.setNight(night);
+  if (mosque) mosque.setNight(night);
   if (restaurant) restaurant.setNight(night);
 }
 
 // Landmark / interior camera views (📍 أماكن button cycles through them).
 function placeList() {
   const out = [];
-  if (university) {
-    out.push({ name: 'جامعة دولة الأغنياء', v: university.views.day });
-    out.push({ name: 'قاعة المحاضرات', v: university.views.hall, inside: true });
-    out.push({ name: 'مكتبة الجامعة', v: university.views.library, inside: true });
+  if (mosque) {
+    out.push({ name: 'جامع دولة الأغنياء', v: mosque.views.day });
+    out.push({ name: 'قاعة الصلاة', v: mosque.views.hall, inside: true });
+    out.push({ name: 'المحراب', v: mosque.views.mihrab, inside: true });
   }
   if (restaurant) {
     out.push({ name: 'مطعم البحر', v: restaurant.views.day });
@@ -2051,6 +2351,85 @@ function viewPlace(i, instant = false) {
   return p.name;
 }
 
+// Interiors (mosque prayer hall, restaurant inside) only render when the
+// camera is near or inside them.
+function updateInteriors() {
+  if (!interiors.length || !camera) return;
+  // inside the prayer hall / restaurant the outdoor name tags would float
+  // through the walls — hide the label layer while an interior view is on
+  if (labelLayer && labelLayer.root) {
+    const vis = interiorCam ? 'hidden' : '';
+    if (labelLayer.root.style.visibility !== vis) labelLayer.root.style.visibility = vis;
+  }
+  const R = (QS && QS.interiorR) || 120;
+  for (const it of interiors) {
+    const on = interiorCam || camera.position.distanceTo(it.center) < R + it.radius;
+    if (it.group.visible !== on) it.group.visible = on;
+  }
+}
+
+// Preview perf: merge static scenery per material, register interiors.
+function optimizeStaticScene() {
+  const t0 = performance.now();
+  const stats = {};
+  try {
+    if (roadsGroup) {
+      // one shared material per road colour (they were cloned per road)
+      const canon = new Map();
+      roadsGroup.traverse((o) => {
+        if (!o.isMesh || !o.material) return;
+        const k = o.material.color.getHex();
+        if (!canon.has(k)) canon.set(k, o.material);
+        o.material = canon.get(k);
+      });
+      stats.roads = mergeStaticMeshes(roadsGroup);
+    }
+    if (mapRoot) stats.map = mergeStaticMeshes(mapRoot, { skip: (o) => (o.userData && o.userData.roads) || o.isLOD || o.name === 'terrain' });
+    if (blockStreets && blockStreets.root) stats.streets = mergeStaticMeshes(blockStreets.root, { skip: (o) => o.name === 'streetGreenery' });
+    const inter = ['prayerHall', 'restaurantInterior'];
+    for (const lm of [mosque, restaurant]) {
+      if (!lm || !lm.root) continue;
+      stats[lm.root.name] = mergeStaticMeshes(lm.root, { skip: (o) => inter.includes(o.name) });
+      lm.root.traverse((o) => {
+        if (!inter.includes(o.name)) return;
+        mergeStaticMeshes(o);
+        const box = new THREE.Box3().setFromObject(o);
+        const center = box.getCenter(new THREE.Vector3());
+        const radius = box.getSize(new THREE.Vector3()).length() * 0.5;
+        interiors.push({ group: o, center, radius, name: o.name });
+      });
+    }
+  } catch (e) { console.warn('static merge failed', e); }
+  stats.ms = Math.round(performance.now() - t0);
+  window.__perfMerge = stats;
+}
+
+function initAdaptive() {
+  if (RECORD || MODE !== 'map' || DEVICE.forced || params.get('adaptive') === '0') return;
+  const steps = [];
+  if (composer) steps.push({ name: 'bloom-off', apply: () => { composer = null; } });
+  if (QS.shadows) {
+    steps.push({ name: 'shadows-off', apply: () => {
+      QS.shadows = false;
+      renderer.shadowMap.enabled = false;
+      sunLight.castShadow = false;
+      if (houseField) houseField.setShadows(false);
+      scene.traverse((o) => { if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { m.needsUpdate = true; }); });
+    } });
+  }
+  if (renderer.getPixelRatio() > 1) steps.push({ name: 'pixel-ratio-1', apply: () => { renderer.setPixelRatio(1); onResize(); } });
+  steps.push({ name: 'fewer-details', apply: () => {
+    QS.nearR = Math.round((QS.nearR || 200) * 0.6);
+    QS.nearMax = Math.round((QS.nearMax || 400) * 0.5);
+    QS.labels = Math.max(24, Math.round((QS.labels || 40) * 0.7));
+    QS.interiorR = Math.round((QS.interiorR || 100) * 0.6);
+    if (houseField) houseField.setLod(QS.nearR, QS.nearMax);
+    if (birds && birds.group) birds.group.visible = false;
+  } });
+  steps.push({ name: 'pixel-ratio-0.75', apply: () => { renderer.setPixelRatio(0.75); onResize(); } });
+  adaptive = createAdaptiveQuality({ steps });
+}
+
 function renderFrame(timeSec, dt) {
   if (!RECORD && dayNight) {
     const lock = (typeof window !== 'undefined' && window.__lockTod != null) ? window.__lockTod : null;
@@ -2059,9 +2438,7 @@ function renderFrame(timeSec, dt) {
     const meteorOn = !!(meteor && meteor.isActive && meteor.isActive());
     if (!meteorOn) {
       if (house && house.setNightFactor) house.setNightFactor(lastSky.night);
-      for (const item of plotTents) {
-        if (item.house && item.house.setNightFactor) item.house.setNightFactor(lastSky.night);
-      }
+      if (houseField) houseField.setNight(lastSky.night);
     }
     if (crowd && crowd.setNight) crowd.setNight(lastSky.night);
   }
@@ -2095,8 +2472,15 @@ function renderFrame(timeSec, dt) {
     });
   }
   updateCrowdLabels();
-  updatePlotTentTags();
   if (meteor) meteor.tick(dt || 0);
+  if (houseField) {
+    const mOn = !!(meteor && meteor.isActive && meteor.isActive());
+    meteorCooldown = mOn ? 180 : Math.max(0, meteorCooldown - 1);
+    houseField.tick(timeSec);
+    houseField.update(camera, { dynamic: mOn || meteorCooldown > 0 });
+  }
+  updateInteriors();
+  updatePlotTentTags();
   // Update camera matrices, render, THEN project HTML labels (project() needs a current matrixWorld).
   camera.updateMatrixWorld();
   if (composer) composer.render();
@@ -2210,13 +2594,7 @@ function bindHUD() {
       maybeReframeHouse();
     });
   }
-  const form = $('searchForm');
-  if (form) {
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      searchResident(searchInput.value);
-    });
-  }
+  bindHouseSearch();
   const seedEl = $('seedInput');
   if (seedEl) {
     seedEl.value = currentSeed;
@@ -2284,6 +2662,7 @@ function loop() {
     }
     tickTapRipple(dt);
     renderFrame(clock.getElapsedTime(), dt);
+    if (adaptive) adaptive.frame(now);
     if (DEMO_N > 1) {
       fpsFrames += 1;
       if (!fpsT0) fpsT0 = now;
@@ -2482,10 +2861,12 @@ async function main() {
       blockLayout = assignBlockPlots(allResidents, data);
       blockStreets = createBlockStreets({ scene, groundY, data, layout: blockLayout, quality: QS });
     }
-    university = createUniversity({ scene, groundY, quality: QS });
+    mosque = createMosque({ scene, groundY, quality: QS }); // جامع دولة الأغنياء (replaced the university)
     restaurant = createRestaurant({ scene, groundY, quality: QS });
     stadiumMarker = createStadiumMarker({ scene, groundY });
+    try { exposeCityHooks(); } catch (e) { console.warn('city hooks', e); }
     if (QS.shadows && mapRoot) mapRoot.traverse((o) => { if (o.isMesh) o.receiveShadow = true; });
+    optimizeStaticScene();
     const first = allResidents[0] || { id: 1, name: 'بيت رقم 1', label: 'بيت رقم 1', seed: 'house_1', level: 1, x: plot.x, z: plot.z, i: 0, anonymous: true };
     currentSeed = first.seed || 'house_1';
     currentLevel = first.level || START_LEVEL;
@@ -2644,7 +3025,8 @@ async function main() {
     weather,
     blockLayout,
     blockStreets,
-    university,
+    mosque,
+    university: mosque, // legacy alias
     restaurant,
     viewPlace,
     placeNames: () => placeList().map((p) => p.name),
@@ -2654,9 +3036,7 @@ async function main() {
       lastSky = dayNight.update(0, t);
       if (lamps) lamps.setNight(lastSky.night);
       if (house && house.setNightFactor) house.setNightFactor(lastSky.night);
-      for (const item of plotTents) {
-        if (item.house && item.house.setNightFactor) item.house.setNightFactor(lastSky.night);
-      }
+      if (houseField) houseField.setNight(lastSky.night);
       if (crowd && crowd.setNight) crowd.setNight(lastSky.night);
       if (birds) birds.tick(0, 0.016, lastSky.night);
       if (weather && !(meteor && meteor.isActive && meteor.isActive())) weather.update(0, 0, { hemi: hemiLight, sun: sunLight, fill: fillLight, fog: scene.fog, renderer });
@@ -2710,6 +3090,17 @@ async function main() {
     triggerMeteor: (name, opts) => meteor && meteor.trigger(name, opts),
 
     cullHouseLabels,
+    getQuality: () => QUALITY,
+    perfInfo: () => ({
+      quality: QUALITY, device: DEVICE,
+      settings: { ...QS },
+      pixelRatio: renderer.getPixelRatio(),
+      adaptive: adaptive ? { level: adaptive.level, fps: adaptive.fps, log: adaptive.log.slice() } : null,
+      field: houseField ? houseField.stats() : null,
+      merge: window.__perfMerge || null,
+      interiorsVisible: interiors.filter((i) => i.group.visible).map((i) => i.name),
+    }),
+    goToHouse: (q) => goToResident(findResident(q)),
     debugLabels: () => {
       const pr = renderer.getPixelRatio() || 1;
       const w = renderer.domElement.width / pr, h = renderer.domElement.height / pr;
@@ -2749,6 +3140,8 @@ async function main() {
     }
   }
 
+  initAdaptive();
+  applyDeepLink();
   if (!RECORD) requestAnimationFrame(loop);
   else {
     // still render one frame so the canvas isn't black before capture

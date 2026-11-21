@@ -1,6 +1,7 @@
 // ~300 instanced dabke dancers + crowd. Arms hang down 30–45° from vertical,
 // hands meet the neighbor at hip height. Never a T-pose.
 import * as THREE from 'three';
+import { PERF } from './gfx.js';
 
 export const DANCE_RINGS = [
   { r: 6.6, n: 54, speed: 0.16, dir: 1 },
@@ -130,7 +131,16 @@ export function createDabkeCrowd(plazaX, plazaZ) {
       if (d > 200) lod = 2;
       else if (d > 110) lod = 1;
     }
+    // far away (or the whole city view on phones) the dancers are sub-pixel: skip them
+    const hideD = PERF.mobile ? 420 : 900;
+    if (camera) {
+      const d = Math.hypot(camera.position.x - plazaX, camera.position.z - plazaZ, camera.position.y - 4);
+      const far = d > hideD;
+      if (group.visible === far) group.visible = !far;
+      if (far) return;
+    }
     if (lod === 2 && frame % 3 !== 0) return;
+    if (lod === 1 && PERF.mobile && frame % 2 !== 0) return;
     const skipLegs = lod >= 1;
     for (let i = 0; i < N; i++) {
       const p = people[i];
