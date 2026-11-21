@@ -1,5 +1,6 @@
 // Village-bird flocks (parrot, stork, pigeon) — MIT / CC-BY. No paid flock mesh.
 import * as THREE from 'three';
+import { PERF } from './gfx.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 import { clone as cloneSkinned } from '../vendor/SkeletonUtils.js';
 
@@ -182,7 +183,8 @@ export function createFlocks(scene) {
       flocks.forEach((f, fi) => {
         const src = byId[f.kind];
         if (!src) return;
-        for (let i = 0; i < f.n; i++) {
+        const nB = Math.max(2, Math.round(f.n * (PERF.birds || 1)));
+        for (let i = 0; i < nB; i++) {
           const a = f.phase + (i / f.n) * Math.PI * 2;
           const b = makeBird(
             src,
@@ -198,6 +200,7 @@ export function createFlocks(scene) {
       });
       flocks._groups = groups;
       singles.forEach((s, i) => {
+        if (i >= Math.ceil(singles.length * (PERF.birds || 1))) return;
         const src = byId[s.kind];
         if (!src) return;
         const b = makeBird(src, 100 + i * 30, s.y, i * 40, 900 + i * 13);
@@ -219,11 +222,6 @@ export function createFlocks(scene) {
       nightFade = Math.max(0, 1 - Math.max(0, (night || 0) - 0.45) / 0.5);
       group.visible = nightFade > 0.05;
       if (!ready || !group.visible) return;
-      group.traverse((o) => {
-        if (o.isMesh && o.material && o.material.opacity != null) {
-          // don't fight unlit if no transparent; skip
-        }
-      });
       const t = timeSec;
       const groups = flocks._groups || [];
       for (let fi = 0; fi < groups.length; fi++) steerFlock(groups[fi], flocks[fi], t, dt);

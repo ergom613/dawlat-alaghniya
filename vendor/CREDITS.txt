@@ -1,0 +1,9 @@
+three.js r187 (MIT License, Copyright © 2010-2026 three.js authors) — https://github.com/mrdoob/three.js
+  vendor/postprocessing/{EffectComposer,RenderPass,UnrealBloomPass,OutputPass,ShaderPass,MaskPass,Pass}.js
+  vendor/shaders/{CopyShader,LuminosityHighPassShader,OutputShader}.js
+  copied unmodified from three@0.187.0 examples/jsm.
+
+University (جامعة دولة الأغنياء), مطعم البحر, street trees/palms, water shader and textures
+(plank, windows, book shelves, signs, clock) are procedural three.js geometry / canvas
+textures made for this project — no third-party models or images.
+Arabic signs use the Cairo font already bundled in assets/fonts (SIL OFL 1.1).

@@ -1,10 +1,12 @@
 // Preview-only wedding square: plaza, dabke circle, spatial playlist, follow camera.
 import * as THREE from 'three';
 import { createDabkeCrowd, DANCE_RINGS } from './dabkeCrowd.js';
+import { DABKE } from './layout.js';
 
-const PLAZA = { x: 216, z: -144 };
+// Moved west of the city (the university now stands at the old spot 216,-144).
+const PLAZA = { x: DABKE.x, z: DABKE.z };
 const PLAZA_SIZE = 68;
-const ROAD_TO = { x: 222.1, z: -137.2 };
+const ROAD_TO = { x: DABKE.x + 40, z: DABKE.z }; // access road heads east to the city
 const SILENT_BEYOND = 120;
 const FULL_WITHIN = 32;
 

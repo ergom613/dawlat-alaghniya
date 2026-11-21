@@ -256,10 +256,11 @@ function buildGridMesh(stride) {
   return mesh;
 }
 
-export function buildTerrainMesh() {
+export function buildTerrainMesh(stride = 1) {
   if (!meta || !heights) return new THREE.Group();
-  const fine = buildGridMesh(1);
-  const coarse = buildGridMesh(2);
+  const s = Math.max(1, stride | 0);
+  const fine = buildGridMesh(s);
+  const coarse = buildGridMesh(s * 2);
   const lod = new THREE.LOD();
   lod.name = 'terrain';
   lod.addLevel(fine, 0);

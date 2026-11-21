@@ -1,5 +1,6 @@
 // Preview weather: 5-day sun → rain → snow cycle, same for every visitor. All CC0/MIT.
 import * as THREE from 'three';
+import { PERF } from './gfx.js';
 import { GLTFLoader } from '../vendor/GLTFLoader.js';
 import { heightForLevel } from './house.js';
 
@@ -54,8 +55,8 @@ export function createWeather({ scene, groundY, getResidents, getSunPosition }) 
   let flare = null, sunDisc = null;
   let rainVel, snowVel;
 
-  const RAIN_N = 1600;
-  const SNOW_N = 700;
+  const RAIN_N = Math.round(1600 * (PERF.particles || 1));
+  const SNOW_N = Math.round(700 * (PERF.particles || 1));
 
   const loader = new GLTFLoader();
   const texLoader = new THREE.TextureLoader();

@@ -4,12 +4,13 @@
 // in memory). Already-reached milestones replay on a slow stagger so the map
 // stays festive without firing every house at once.
 import * as THREE from 'three';
+import { PERF } from './gfx.js';
 
 export const MILESTONES = [10, 15, 20, 25, 30];
 const STORAGE_KEY = 'dawlat_alaghniya_celebrated';
 const PERIOD = 36; // seconds between quiet replays of the same house
-const MAX_SPARKS = 480;
-const MAX_CONFETTI = 240;
+const MAX_SPARKS = Math.round(480 * (PERF.particles || 1));
+const MAX_CONFETTI = Math.round(240 * (PERF.particles || 1));
 const MAX_CONCURRENT = 3;
 
 export function highestMilestone(level) {
