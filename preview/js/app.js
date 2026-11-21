@@ -13,6 +13,7 @@ import { assignBlockPlots, createBlockStreets } from './blocks.js';
 import { initOwner } from './owner.js';
 import { createCrowd } from './crowd.js';
 import { createWedding } from './wedding.js';
+import { createMeteorEvent } from './meteor.js';
 import { loadTerrain, getHeight, buildTerrainMesh, terrainAttribution, LAND_H } from './terrain.js';
 
 const params = new URLSearchParams(location.search);
@@ -27,6 +28,8 @@ const DEMO_N = Math.max(0, parseInt(params.get('demo') || '0', 10) || 0);
 const PREVIEW = params.get('preview') || '';
 const PROMO_VER = Math.max(0, parseInt(params.get('promo') || '0', 10) || 0);
 const PROMO = PROMO_VER >= 1;
+const START_EVENT = (params.get('event') || '').toLowerCase();
+const START_GIFTER = params.get('gifter') || params.get('name') || '';
 
 const RESIDENT = {
   id: 1,
@@ -73,7 +76,7 @@ let currentSeed = START_SEED;
 let demo = { active: RECORD, t: 0 };
 let badgeEl, searchInput, levelSlider, levelLabel, foundMsg;
 let hemiLight, sunLight, fillLight, skyMesh;
-let dayNight = null, lamps = null, crowd = null, birds = null, weather = null, celebrations = null, tour = null, wedding = null, blockLayout = null, blockStreets = null;
+let dayNight = null, lamps = null, crowd = null, birds = null, weather = null, celebrations = null, tour = null, wedding = null, meteor = null, blockLayout = null, blockStreets = null;
 let allResidents = [];
 let selectedResident = null;
 let plotTents = []; // full procedural tents + tags for real residents (not the selected hero)
@@ -1968,20 +1971,24 @@ function renderFrame(timeSec, dt) {
     const lock = (typeof window !== 'undefined' && window.__lockTod != null) ? window.__lockTod : null;
     lastSky = dayNight.update(dt || 0, lock);
     if (lamps) lamps.setNight(lastSky.night);
-    if (house && house.setNightFactor) house.setNightFactor(lastSky.night);
-    for (const item of plotTents) {
-      if (item.house && item.house.setNightFactor) item.house.setNightFactor(lastSky.night);
+    const meteorOn = !!(meteor && meteor.isActive && meteor.isActive());
+    if (!meteorOn) {
+      if (house && house.setNightFactor) house.setNightFactor(lastSky.night);
+      for (const item of plotTents) {
+        if (item.house && item.house.setNightFactor) item.house.setNightFactor(lastSky.night);
+      }
     }
     if (crowd && crowd.setNight) crowd.setNight(lastSky.night);
   }
   if (waterUniforms) waterUniforms.uTime.value = timeSec;
-  if (!RECORD && weather) {
+  const meteorOn = !!(meteor && meteor.isActive && meteor.isActive());
+  if (!RECORD && weather && !meteorOn) {
     weather.update(dt || 0, timeSec, {
       hemi: hemiLight, sun: sunLight, fill: fillLight, fog: scene.fog, renderer,
     });
   }
   if (!RECORD && birds) birds.tick(timeSec, dt || 0.016, lastSky.night);
-  if (!RECORD && celebrations) celebrations.tick(timeSec, dt || 0, lastSky.night);
+  if (!RECORD && celebrations && !meteorOn) celebrations.tick(timeSec, dt || 0, lastSky.night);
   if (!RECORD && wedding) wedding.update(dt || 0, lastSky.night, timeSec);
   if (yachtObj && yachtObj.group.visible && yachtObj.tick) yachtObj.tick(timeSec);
   if (house && house.group.visible) {
@@ -2003,6 +2010,7 @@ function renderFrame(timeSec, dt) {
   }
   updateCrowdLabels();
   updatePlotTentTags();
+  if (meteor) meteor.tick(dt || 0);
   // Update camera matrices, render, THEN project HTML labels (project() needs a current matrixWorld).
   camera.updateMatrixWorld();
   renderer.render(scene, camera);
@@ -2147,12 +2155,23 @@ function bindHUD() {
       if (lab) lab.textContent = WEATHER_AR[m] || m;
     });
   }
+  const bm = $('btnMeteor');
+  if (bm) {
+    bm.addEventListener('click', () => {
+      const name = window.prompt('اسم صاحب الهدية؟', '') || 'متابع';
+      if (meteor && meteor.trigger) meteor.trigger(name);
+    });
+  }
   updateStats();
   applyLevel(currentLevel, false);
   bindTapToFly();
 }
 
 function loop() {
+  if (typeof window !== 'undefined' && window.__promoHold) {
+    requestAnimationFrame(loop);
+    return;
+  }
   const now = performance.now();
   const dt = lastTick ? Math.min(0.08, (now - lastTick) / 1000) : 0.016;
   lastTick = now;
@@ -2464,6 +2483,42 @@ async function main() {
     });
   }
 
+  if (MODE === 'map') {
+    meteor = createMeteorEvent({
+      scene,
+      camera,
+      controls,
+      groundY,
+      getHouses: () => {
+        const list = [];
+        if (house && house.group) list.push({ group: house.group, house });
+        for (const item of plotTents) {
+          if (item.house && item.house.group) list.push({ group: item.house.group, house: item.house });
+        }
+        return list;
+      },
+      onStart: () => {
+        if (tour && tour.pause) tour.pause();
+        if (celebrations && celebrations.group) celebrations.group.visible = false;
+        if (weather && weather.setCloudsVisible) weather.setCloudsVisible(false);
+      },
+      onEnd: () => {
+        if (celebrations && celebrations.group) celebrations.group.visible = true;
+        if (weather && weather.setCloudsVisible) weather.setCloudsVisible(true);
+      },
+    });
+  }
+
+  window.triggerMeteor = (name, opts) => {
+    if (meteor && meteor.trigger) return meteor.trigger(name, opts);
+    return false;
+  };
+
+  if (!RECORD && START_EVENT === 'meteor') {
+    const gifter = START_GIFTER || 'متابع';
+    setTimeout(() => { if (meteor) meteor.trigger(gifter); }, 500);
+  }
+
   // public API for capture / hosting
   window.__ready = true;
   window.MonacoApp = {
@@ -2495,7 +2550,7 @@ async function main() {
       }
       if (crowd && crowd.setNight) crowd.setNight(lastSky.night);
       if (birds) birds.tick(0, 0.016, lastSky.night);
-      if (weather) weather.update(0, 0, { hemi: hemiLight, sun: sunLight, fill: fillLight, fog: scene.fog, renderer });
+      if (weather && !(meteor && meteor.isActive && meteor.isActive())) weather.update(0, 0, { hemi: hemiLight, sun: sunLight, fill: fillLight, fog: scene.fog, renderer });
       if (wedding && wedding.setNight) wedding.setNight(lastSky.night);
       return lastSky;
     },
@@ -2527,7 +2582,7 @@ async function main() {
       if (yachtTag) yachtTag.show(yOn);
     },
     frameCell: () => frameCellCamera(),
-    render: (t = 0) => renderFrame(t),
+    render: (t = 0, dt) => renderFrame(t, dt),
     duration: PROMO_VER === 4 ? PROMO_V4_DURATION : (PROMO ? PROMO_DURATION : DEMO_DURATION),
     plot: monacoData && monacoData.plot,
     resident: RESIDENT,
@@ -2541,6 +2596,8 @@ async function main() {
     exitWeddingCam: () => wedding && wedding.exitCam(),
     isWeddingCam: () => !!(wedding && wedding.isCam()),
     getWeddingCenter: () => wedding && wedding.getCenter(),
+    meteor,
+    triggerMeteor: (name, opts) => meteor && meteor.trigger(name, opts),
 
     cullHouseLabels,
     debugLabels: () => {

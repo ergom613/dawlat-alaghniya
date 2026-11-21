@@ -294,6 +294,44 @@
     #ownerMsg.err { color: #ffb4a8; }
     #ownerTokenBox p { margin: 0 0 8px; font-size: 13px; color: var(--text); line-height: 1.45; }
 
+
+    #meteorBanner {
+      position: fixed;
+      left: 50%;
+      top: 6.5%;
+      transform: translateX(-50%);
+      z-index: 30;
+      pointer-events: none;
+      text-align: center;
+      max-width: 94vw;
+      width: max-content;
+      padding: 12px 22px 14px;
+      border-radius: 22px;
+      background: rgba(12, 8, 4, 0.72);
+      border: 2px solid rgba(232, 196, 90, 0.85);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.45), 0 0 30px rgba(255,120,30,0.25);
+      direction: rtl;
+      font-family: Cairo, "Noto Naskh Arabic", "Noto Sans Arabic", Tahoma, sans-serif;
+      font-weight: 800;
+      font-size: clamp(26px, 5.6vw, 60px);
+      line-height: 1.35;
+      color: #fff6df;
+      -webkit-text-stroke: 0.4px rgba(20,10,0,0.35);
+      text-shadow: 0 2px 0 #2a1a00, 0 0 22px rgba(255,110,30,0.9), 0 8px 18px rgba(0,0,0,0.7);
+      letter-spacing: 0;
+    }
+    #meteorBanner[hidden] { display: none !important; }
+    #meteorBanner .meteorLine { display: block; white-space: nowrap; }
+    #meteorBanner .meteorSub { font-size: 0.78em; margin-top: 0.15em; }
+    #meteorBanner .meteorName {
+      display: inline-block;
+      color: #ffe08a;
+      unicode-bidi: isolate;
+    }
+    #meteorBanner.rebuild {
+      text-shadow: 0 2px 0 #1a2a10, 0 0 28px rgba(180,255,120,0.75), 0 8px 22px rgba(0,0,0,0.7);
+    }
+
     @media (max-width: 720px) {
       :root { --btn-h: 42px; }
       #brand { padding: 7px 12px; flex: 1 1 auto; }
@@ -398,6 +436,10 @@
             <span class="sub" id="weatherModeLabel">تلقائي</span>
           </button>
           <button class="btn tool" id="btnOverview" type="button">🗺️ الخريطة</button>
+          <button class="btn tool col owner-only" id="btnMeteor" type="button" title="هدية النيزك">
+            <span>☄️ نيزك</span>
+            <span class="sub">هدية ضخمة</span>
+          </button>
           <button class="btn tool" id="btnOwnerAdd" type="button">➕ إضافة</button>
         </div>
         <div id="publicDock" class="dock-row">
@@ -410,6 +452,7 @@
       </div>
     </div>
   </div>
+  <div id="meteorBanner" hidden dir="rtl"></div>
   <script type="module" src="./js/app.js"></script>
 </body>
 </html>

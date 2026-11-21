@@ -260,6 +260,10 @@ export function createWeather({ scene, groundY, getResidents, getSunPosition }) 
     if (flare) flare.visible = isSun;
     if (sunDisc) sunDisc.visible = isSun;
     clouds.forEach((c, i) => {
+      if (cloudsHidden) {
+        c.mesh.visible = false;
+        return;
+      }
       c.mesh.visible = true;
       const dark = isRain ? 0x6a7380 : isSnow ? 0xd8dde3 : 0xf2f4f7;
       c.mesh.traverse((o) => {
@@ -367,6 +371,15 @@ export function createWeather({ scene, groundY, getResidents, getSunPosition }) 
     return mode;
   }
 
+  let cloudsHidden = false;
+  function setCloudsVisible(v) {
+    cloudsHidden = !v;
+    clouds.forEach((c) => {
+      c.mesh.visible = !!v;
+      c.mesh.traverse((o) => { if (o.isMesh) o.visible = !!v; });
+    });
+  }
+
   function cycleMode() {
     const order = ['auto', 'sun', 'rain', 'snow'];
     const i = order.indexOf(mode);
@@ -380,6 +393,7 @@ export function createWeather({ scene, groundY, getResidents, getSunPosition }) 
     getKind: () => (ready ? current : resolveKind()),
     setMode,
     cycleMode,
+    setCloudsVisible,
     rebuildRoofs,
     update,
     whenReady: init,

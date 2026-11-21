@@ -2,20 +2,38 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>دولة الأغنياء — State of the Rich</title>
   <style>
+    @font-face {
+      font-family: Cairo;
+      src: url("./assets/fonts/Cairo-Var.ttf") format("truetype");
+      font-weight: 200 1000;
+      font-style: normal;
+      font-display: swap;
+    }
     :root {
-      --bg: rgba(16, 14, 12, 0.62);
-      --bg2: rgba(22, 18, 14, 0.78);
-      --line: rgba(232, 196, 90, 0.5);
+      --bg: rgba(16, 14, 12, 0.48);
+      --bg2: rgba(18, 16, 13, 0.62);
+      --line: rgba(232, 196, 90, 0.38);
       --gold: #e8c45a;
       --text: #fff6df;
-      --muted: #c9b896;
-      --btn: rgba(255,255,255,0.10);
+      --muted: #d2c4a4;
+      --btn: rgba(255, 255, 255, 0.08);
+      --safe-top: max(10px, env(safe-area-inset-top, 0px));
+      --safe-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+      --safe-left: max(10px, env(safe-area-inset-left, 0px));
+      --safe-right: max(10px, env(safe-area-inset-right, 0px));
+      --glass: blur(18px) saturate(1.25);
+      --radius-pill: 999px;
+      --btn-h: 44px;
     }
     * { box-sizing: border-box; }
-    html, body { margin: 0; height: 100%; overflow: hidden; background: #8ec7e8; font-family: "Noto Naskh Arabic", "Noto Sans Arabic", Tahoma, "Segoe UI", sans-serif; color: var(--text); }
+    html, body {
+      margin: 0; height: 100%; overflow: hidden; background: #8ec7e8;
+      font-family: Cairo, "Noto Naskh Arabic", "Noto Sans Arabic", Tahoma, "Segoe UI", sans-serif;
+      color: var(--text);
+    }
     #c { display: block; width: 100%; height: 100%; touch-action: none; }
     #hud { position: fixed; inset: 0; pointer-events: none; z-index: 4; }
     #hud * { pointer-events: auto; }
@@ -41,71 +59,138 @@
     .name-tag.yacht { font-size: 8px; padding: 1px 5px; border-radius: 7px; }
     .name-tag.caption { transform: translate(-50%, 12%); font-size: 14px; background: rgba(20,18,14,0.78); }
     .name-tag.crowd { font-size: 12px; padding: 4px 10px; border-radius: 12px; }
+    .name-tag.cele-badge {
+      font-size: 13px; padding: 4px 9px 3px; border-radius: 12px;
+      background: rgba(18,16,12,0.92); border: 1px solid #e8c45a; color: #fff6df;
+      box-shadow: 0 0 14px rgba(232,196,90,0.55), 0 4px 10px rgba(0,0,0,0.35);
+      z-index: 6;
+    }
+    .name-tag.cele-badge strong { font-size: 13px; font-weight: 800; color: #ffe08a; }
+    .name-tag.cele-badge small { display: none; }
+
     .panel {
       background: var(--bg);
       border: 1px solid var(--line);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border-radius: 18px;
-      box-shadow: 0 10px 28px rgba(0,0,0,0.28);
+      backdrop-filter: var(--glass);
+      -webkit-backdrop-filter: var(--glass);
+      border-radius: 20px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.28);
     }
+
     #top {
-      position: absolute; top: 12px; right: 12px; left: 12px;
-      display: flex; gap: 10px; align-items: stretch; flex-wrap: wrap;
+      position: absolute;
+      top: var(--safe-top); right: var(--safe-right); left: var(--safe-left);
+      display: flex; flex-direction: column; gap: 8px; align-items: stretch;
     }
-    #brand { padding: 10px 16px; min-width: 200px; }
-    #brand h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: 0; }
-    #brand p { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+    #topRow { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; }
+    #followStrip { padding: 8px 10px 10px; text-align: center; }
+    #followStrip .followLine {
+      margin: 0 0 8px; font-size: 13px; font-weight: 700; color: var(--text);
+      line-height: 1.35;
+    }
+    #followStrip .stories {
+      display: flex; justify-content: center; align-items: flex-start; gap: 16px;
+    }
+    #followStrip .story {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      text-decoration: none; color: var(--text); width: 64px;
+    }
+    #followStrip .ring {
+      width: 56px; height: 56px; border-radius: 50%; padding: 3px;
+      display: grid; place-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    #followStrip .story:hover .ring, #followStrip .story:focus-visible .ring {
+      transform: scale(1.08); box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+    }
+    #followStrip .av {
+      width: 100%; height: 100%; border-radius: 50%;
+      background: #111; display: grid; place-items: center;
+      overflow: hidden; border: 2px solid rgba(16,14,12,0.85);
+    }
+    #followStrip .av svg { width: 26px; height: 26px; display: block; }
+    #followStrip .story.tiktok .ring { background: linear-gradient(135deg, #25F4EE 0%, #000 48%, #FE2C55 100%); }
+    #followStrip .story.tiktok .av { background: #111; }
+    #followStrip .story.facebook .ring { background: #1877F2; }
+    #followStrip .story.facebook .av { background: #1877F2; border-color: #1877F2; }
+    #followStrip .story.instagram .ring {
+      background: conic-gradient(from 200deg, #f58529, #dd2a7b, #8134af, #515bd4, #f58529);
+    }
+    #followStrip .story.instagram .av {
+      background: radial-gradient(circle at 30% 30%, #f58529, #dd2a7b 55%, #8134af);
+      border-color: transparent;
+    }
+    #followStrip .lab { font-size: 10px; font-weight: 700; color: var(--gold); line-height: 1.1; }
+    #brand { padding: 8px 14px; min-width: 0; }
+    #brand h1 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: 0; line-height: 1.2; }
+    #brand p { margin: 1px 0 0; font-size: 11px; color: var(--muted); }
     #brand .en { color: var(--gold); font-weight: 600; }
-    #stats { padding: 10px 16px; display: flex; flex-direction: column; justify-content: center; min-width: 110px; }
-    #stats .n { font-size: 20px; color: var(--gold); font-weight: 800; }
-    #stats .k { font-size: 12px; color: var(--muted); }
+    #stats { padding: 8px 14px; display: flex; flex-direction: column; justify-content: center; min-width: 92px; }
+    #stats .n { font-size: 18px; color: var(--gold); font-weight: 800; line-height: 1.15; }
+    #stats .k { font-size: 11px; color: var(--muted); }
     #fpsMeter { font-size: 11px; color: var(--gold); margin-top: 2px; display: none; }
-    #searchForm { display: flex; gap: 8px; flex: 1; min-width: 200px; padding: 8px; align-items: center; }
+
+    #searchForm {
+      display: flex; gap: 6px; flex: 1; min-width: 0;
+      padding: 6px; align-items: center;
+    }
     #searchForm input, #seedInput {
-      flex: 1; border: 0; background: rgba(255,255,255,0.1); color: var(--text);
-      border-radius: 12px; padding: 10px 12px; font-size: 15px; outline: none;
-      direction: ltr; text-align: left; font-family: inherit;
+      flex: 1 1 auto; min-width: 0; border: 0; background: rgba(255,255,255,0.10); color: var(--text);
+      border-radius: var(--radius-pill); padding: 0 14px; height: var(--btn-h);
+      font-size: 14px; outline: none; direction: ltr; text-align: left; font-family: inherit;
     }
     #searchForm input::placeholder, #seedInput::placeholder { color: #b8a88a; }
-    #searchForm button, .btn {
-      border: 0; background: var(--gold); color: #2a1f0a; font-weight: 800;
-      border-radius: 12px; padding: 10px 14px; cursor: pointer; font-size: 14px;
-      font-family: inherit; display: inline-flex; align-items: center; gap: 6px;
-      white-space: nowrap; line-height: 1;
+
+    .btn, #searchForm button {
+      border: 1px solid var(--line);
+      background: var(--btn);
+      color: var(--text);
+      font-weight: 700;
+      border-radius: var(--radius-pill);
+      height: var(--btn-h);
+      min-width: var(--btn-h);
+      padding: 0 14px;
+      cursor: pointer;
+      font-size: 13px;
+      font-family: inherit;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      white-space: nowrap;
+      line-height: 1;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease, color 0.15s ease;
+      -webkit-tap-highlight-color: transparent;
     }
-    .btn.ghost, .btn.tool {
-      background: var(--btn); color: var(--text);
-      border: 1px solid rgba(232,196,90,0.28);
+    #searchForm button { flex-shrink: 0; background: linear-gradient(180deg, #f0d36a, #d4a84a); color: #2a1f0a; border-color: transparent; font-weight: 800; }
+    .btn:hover, #searchForm button:hover { border-color: var(--gold); background: rgba(232,196,90,0.18); }
+    #searchForm button:hover { background: linear-gradient(180deg, #f6dc78, #e0b450); }
+    .btn:active, #searchForm button:active { transform: scale(0.97); }
+    .btn:focus-visible, #searchForm button:focus-visible, #searchForm input:focus-visible {
+      outline: 2px solid var(--gold); outline-offset: 2px;
     }
-    .btn.tool { min-height: 42px; padding: 8px 12px; }
+    .btn.primary, .btn.on {
+      background: linear-gradient(180deg, #f0d36a, #d4a84a);
+      color: #2a1f0a;
+      border-color: transparent;
+      font-weight: 800;
+    }
+    .btn.tool { padding: 0 12px; }
+    .btn.icon { padding: 0; width: var(--btn-h); font-size: 18px; font-weight: 800; }
     .btn .ico { font-size: 16px; line-height: 1; }
-    .btn .sub { display: block; font-size: 11px; font-weight: 600; color: var(--gold); margin-top: 1px; }
-    .btn.col { flex-direction: column; align-items: flex-start; gap: 0; }
-    #foundMsg { position: absolute; top: 86px; right: 12px; padding: 8px 12px; font-size: 13px; max-width: min(90vw, 420px); }
-    #levels {
-      position: absolute; bottom: 36px; right: 12px; left: 12px;
-      padding: 10px 14px 12px;
+    .btn .sub { font-size: 10px; font-weight: 700; color: var(--gold); line-height: 1; }
+    .btn.col {
+      flex-direction: column; align-items: center; gap: 2px;
+      height: auto; min-height: var(--btn-h); padding: 6px 10px;
     }
-    #levels .row { display: flex; align-items: center; gap: 12px; }
-    #levelLabel { font-size: 13px; color: var(--gold); margin-bottom: 6px; font-weight: 700; }
-    #levelSlider { flex: 1; accent-color: var(--gold); width: 100%; }
-    .hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
-    #tools {
-      display: grid;
-      grid-template-columns: auto auto auto 1fr;
-      gap: 8px;
-      margin-top: 10px;
-      align-items: stretch;
-    }
-    #seedWrap { display: flex; gap: 8px; align-items: center; min-width: 0; }
-    #seedWrap label { font-size: 12px; color: var(--muted); white-space: nowrap; }
-    #seedInput { padding: 8px 10px; font-size: 13px; min-width: 0; }
-    #attrib {
-      position: absolute; bottom: 8px; left: 14px;
-      font-size: 11px; color: rgba(255,255,255,0.85);
-      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-      pointer-events: none;
+    .btn.col .sub { margin: 0; }
+    .btn.ghost { background: var(--btn); color: var(--text); }
+
+    #foundMsg {
+      position: absolute; top: calc(var(--safe-top) + 168px); right: var(--safe-right);
+      padding: 8px 14px; font-size: 13px; max-width: min(90vw, 420px); z-index: 6;
     }
     #levelBadge {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -120%);
@@ -114,14 +199,118 @@
       text-shadow: 0 2px 8px rgba(0,0,0,0.45);
       background: rgba(18,16,14,0.78); border: 1px solid var(--gold);
     }
+
+    /* One bottom cluster: levels + owner tools + public wedding/sound. No overlaps. */
+    #bottomStack {
+      position: absolute;
+      left: var(--safe-left); right: var(--safe-right); bottom: var(--safe-bottom);
+      display: flex; flex-direction: column; align-items: stretch; gap: 8px;
+      z-index: 6;
+    }
+    #dock { padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+    .dock-row {
+      display: flex; gap: 6px; align-items: center;
+      justify-content: flex-start; flex-wrap: nowrap;
+      min-height: var(--btn-h);
+    }
+    .dock-row .btn { flex: 0 0 auto; }
+    .dock-row .track {
+      flex: 1 1 auto; min-width: 0;
+      font-size: 12px; font-weight: 700; color: var(--gold);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      padding: 0 6px;
+    }
+    #levelRow {
+      display: flex; align-items: center; gap: 10px;
+      padding: 2px 8px 0;
+    }
+    #levelLabel { font-size: 12px; color: var(--gold); font-weight: 700; white-space: nowrap; }
+    #levelSlider { flex: 1; accent-color: var(--gold); width: 100%; height: 28px; }
+    #levelRow .lo, #levelRow .hi { font-size: 11px; color: var(--muted); font-weight: 700; }
+    #seedWrap { display: flex; gap: 6px; align-items: center; min-width: 0; flex: 1; }
+    #seedWrap label { font-size: 11px; color: var(--muted); white-space: nowrap; }
+    #seedInput { height: 36px; padding: 0 12px; font-size: 13px; max-width: 160px; }
+
+    body:not(.owner-mode) .owner-only { display: none !important; }
+
+    #ytWeddingWrap {
+      width: 200px; height: 113px;
+      border-radius: 14px; overflow: hidden;
+      display: none;
+      border: 1px solid var(--line);
+      background: #000;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+      align-self: flex-start;
+    }
+    #ytWeddingWrap.on { display: block; }
+    #ytWeddingWrap iframe, #ytWedding { width: 200px; height: 113px; }
+
+    #weddingBack {
+      display: none;
+      position: absolute;
+      top: calc(var(--safe-top) + 8px);
+      left: var(--safe-left);
+      z-index: 7;
+    }
+    body.wedding-cam #weddingBack { display: inline-flex; }
+    body.wedding-cam #top { padding-left: 92px; }
+
+    #attrib {
+      position: absolute;
+      bottom: calc(var(--safe-bottom) + 2px);
+      left: var(--safe-left);
+      font-size: 10px; color: rgba(255,255,255,0.72);
+      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+      pointer-events: none;
+      z-index: 3;
+      max-width: 46vw;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    /* Sit attribution above the dock by reserving space via padding on hud bottom — dock already covers it.
+       Hide attrib on very small screens when dock is present. */
+    #bottomStack ~ #attrib, #attrib { display: none; }
+
+    #ownerPanel {
+      display: none;
+      padding: 12px 14px 14px;
+      max-height: min(58vh, 520px);
+      overflow: auto;
+    }
+    #ownerPanel.open { display: block; }
+    #ownerPanel h2 { margin: 0 0 8px; font-size: 16px; color: var(--gold); font-weight: 800; }
+    #ownerPanel label { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 4px; font-weight: 700; }
+    #ownerPanel input[type="text"], #ownerPanel input[type="password"], #ownerPanel input[type="number"] {
+      width: 100%; border: 0; background: rgba(255,255,255,0.10); color: var(--text);
+      border-radius: var(--radius-pill); padding: 0 14px; height: var(--btn-h);
+      font-size: 14px; outline: none; font-family: inherit;
+    }
+    #ownerPanel .row2 { display: flex; gap: 10px; }
+    #ownerPanel .row2 > div { flex: 1; }
+    #ownerPanel .actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    #ownerMsg { font-size: 13px; margin-top: 8px; color: var(--muted); min-height: 1.2em; }
+    #ownerMsg.ok { color: #9ee6a0; }
+    #ownerMsg.err { color: #ffb4a8; }
+    #ownerTokenBox p { margin: 0 0 8px; font-size: 13px; color: var(--text); line-height: 1.45; }
+
     @media (max-width: 720px) {
-      #brand h1 { font-size: 18px; }
+      :root { --btn-h: 42px; }
+      #brand { padding: 7px 12px; flex: 1 1 auto; }
+      #brand h1 { font-size: 17px; }
+      #stats { min-width: 72px; padding: 7px 10px; }
+      #stats .n { font-size: 16px; }
+      #searchForm { flex: 1 1 100%; width: 100%; padding: 5px; }
+      #searchForm input { font-size: 14px; }
+      #foundMsg { top: calc(var(--safe-top) + 210px); }
+      #followStrip .followLine { font-size: 12px; }
+      #followStrip .ring { width: 48px; height: 48px; }
+      #followStrip .story { width: 56px; gap: 3px; }
+      #followStrip .stories { gap: 12px; }
+      #followStrip .av svg { width: 22px; height: 22px; }
       #levelBadge { font-size: 22px; }
-      #levels { bottom: 28px; padding: 10px 12px 12px; }
-      #tools { grid-template-columns: 1fr 1fr 1fr; }
-      #seedWrap { grid-column: 1 / -1; }
-      #top { gap: 8px; }
-      #stats { min-width: 90px; }
+      #ownerDock { overflow: visible; flex-wrap: nowrap; }
+      #ownerDock .btn { flex: 1 1 0; min-width: 0; padding: 6px 4px; font-size: 11px; }
+      #seedWrap { display: none; }
+      #ytWeddingWrap { transform: scale(0.86); transform-origin: bottom right; }
     }
   </style>
   <script type="importmap">
@@ -133,47 +322,91 @@
   <div id="labels"></div>
   <div id="hud">
     <div id="top">
-      <div id="brand" class="panel">
-        <h1>دولة الأغنياء</h1>
-        <p><span class="en">State of the Rich</span> — تجربة أولى</p>
+      <div id="followStrip" class="panel">
+        <p class="followLine">تابعونا فضلاً لا أمراً 🌹 وبيتك بينبنى باسمك</p>
+        <div class="stories">
+          <a class="story tiktok" href="https://www.tiktok.com/@73saleh7" target="_blank" rel="noopener noreferrer">
+            <span class="ring"><span class="av" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="#fff"><path d="M14.5 3c.4 2.6 1.8 4.2 4.3 4.5v2.3c-1.5 0-2.9-.5-4.2-1.4v6.4c0 3.4-2.6 5.7-5.8 5.7-3.2 0-5.8-2.4-5.8-5.7s2.6-5.7 5.8-5.7c.3 0 .7 0 1 .1v2.5c-.3-.1-.7-.2-1-.2-1.8 0-3.3 1.4-3.3 3.3s1.5 3.3 3.3 3.3 3.2-1.4 3.2-3.3V3h2.5z"/></svg>
+            </span></span>
+            <span class="lab">تيك توك</span>
+          </a>
+          <a class="story facebook" href="https://www.facebook.com/profile.php?id=61595971268054" target="_blank" rel="noopener noreferrer">
+            <span class="ring"><span class="av" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="#fff"><path d="M14.5 8.5V6.8c0-.7.5-1 1.2-1h1.8V3h-2.7C11.9 3 11 5 11 6.7v1.8H9v2.8h2V21h3.5v-9.7h2.4l.4-2.8h-2.8z"/></svg>
+            </span></span>
+            <span class="lab">فيسبوك</span>
+          </a>
+          <a class="story instagram" href="https://www.instagram.com/qissati.ai2026/" target="_blank" rel="noopener noreferrer">
+            <span class="ring"><span class="av" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8">
+                <rect x="4" y="4" width="16" height="16" rx="5"/>
+                <circle cx="12" cy="12" r="4"/>
+                <circle cx="17.2" cy="6.8" r="1" fill="#fff" stroke="none"/>
+              </svg>
+            </span></span>
+            <span class="lab">انستغرام</span>
+          </a>
+        </div>
       </div>
-      <div id="stats" class="panel">
-        <div class="n" id="residentsCount">١ ساكن</div>
-        <div class="k" id="residentsHint">متابع واحد بهالتجربة</div>
-        <div id="fpsMeter"></div>
+      <div id="topRow">
+        <div id="brand" class="panel">
+          <h1>دولة الأغنياء</h1>
+          <p><span class="en">State of the Rich</span> — تجربة أولى</p>
+        </div>
+        <div id="stats" class="panel">
+          <div class="n" id="residentsCount">١ ساكن</div>
+          <div class="k" id="residentsHint">متابع واحد بهالتجربة</div>
+          <div id="fpsMeter"></div>
+        </div>
+        <form id="searchForm" class="panel">
+          <input id="search" type="search" placeholder="ابحث عن اسمك" autocomplete="off" enterkeyhint="search" />
+          <button type="submit">بحث</button>
+        </form>
       </div>
-      <form id="searchForm" class="panel">
-        <input id="search" type="search" placeholder="ابحث عن اسمك" autocomplete="off" enterkeyhint="search" />
-        <button type="submit">بحث</button>
-      </form>
     </div>
     <div id="foundMsg" class="panel" hidden></div>
     <div id="levelBadge" hidden></div>
-    <div id="levels" class="panel">
-      <div id="levelLabel">لفل 1</div>
-      <div class="row" dir="ltr">
-        <span>1</span>
-        <input id="levelSlider" type="range" min="1" max="30" value="1" />
-        <span>30</span>
-      </div>
-      <div class="hint">حرّك الشريط لتشوف كيف البيت بيتطور حسب نشاط المتابع. الأسماء بهالتجربة أمثلة.</div>
-      <div id="tools">
-        <button class="btn tool col" id="btnCamera" type="button" title="كاميرا">
-          <span>الكاميرا</span>
-          <span class="sub" id="camModeLabel">حرة</span>
-        </button>
-        <button class="btn tool col" id="btnSky" type="button" title="ليل ونهار">
-          <span>الوقت</span>
-          <span class="sub" id="skyModeLabel">تلقائي</span>
-        </button>
-        <button class="btn tool" id="btnOverview" type="button">الخريطة</button>
-        <div id="seedWrap">
-          <label for="seedInput">جرّب اسم</label>
-          <input id="seedInput" type="text" value="" autocomplete="off" spellcheck="false" />
+    <button class="btn" id="weddingBack" type="button">رجوع</button>
+
+    <div id="bottomStack">
+      <div id="ytWeddingWrap" aria-hidden="true"><div id="ytWedding"></div></div>
+      <div id="dock" class="panel">
+        <div id="levelRow" class="owner-only">
+          <div id="levelLabel">لفل 1</div>
+          <span class="lo">1</span>
+          <input id="levelSlider" type="range" min="1" max="30" value="1" />
+          <span class="hi">30</span>
+          <div id="seedWrap" class="owner-only">
+            <label for="seedInput">جرّب اسم</label>
+            <input id="seedInput" type="text" value="" autocomplete="off" spellcheck="false" />
+          </div>
+        </div>
+        <div id="ownerDock" class="dock-row owner-only">
+          <button class="btn tool col" id="btnCamera" type="button" title="كاميرا">
+            <span>📷 كاميرا</span>
+            <span class="sub" id="camModeLabel">حرة</span>
+          </button>
+          <button class="btn tool col" id="btnSky" type="button" title="ليل ونهار">
+            <span>🕐 الوقت</span>
+            <span class="sub" id="skyModeLabel">تلقائي</span>
+          </button>
+          <button class="btn tool col owner-only" id="btnWeather" type="button" title="الطقس">
+            <span>🌦️ الطقس</span>
+            <span class="sub" id="weatherModeLabel">تلقائي</span>
+          </button>
+          <button class="btn tool" id="btnOverview" type="button">🗺️ الخريطة</button>
+          <button class="btn tool" id="btnOwnerAdd" type="button">➕ إضافة</button>
+        </div>
+        <div id="publicDock" class="dock-row">
+          <button class="btn tool" id="btnWeddingCam" type="button" title="كاميرا العرس">💃 العرس</button>
+          <button class="btn tool" id="btnWeddingSound" type="button" title="تشغيل الأغنية"><span class="ico">🔊</span> الصوت</button>
+          <button class="btn icon" id="btnWeddingPrev" type="button" title="الأغنية السابقة">‹</button>
+          <button class="btn icon" id="btnWeddingNext" type="button" title="الأغنية التالية">›</button>
+          <div class="track" id="weddingTrackTitle"></div>
         </div>
       </div>
     </div>
-    <div id="attrib" dir="ltr">© OpenStreetMap contributors · Land outline: EU-DEM / Copernicus</div>
   </div>
   <script type="module" src="./js/app.js"></script>
 </body>

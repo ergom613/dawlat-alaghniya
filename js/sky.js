@@ -70,7 +70,7 @@ export function createDayNight(ctx) {
     if (forcedTod != null) return ((forcedTod % 1) + 1) % 1;
     if (mode === 'day') return 0.5;
     if (mode === 'night') return 0.0;
-    autoTod = (autoTod + (dt || 0) / 48) % 1; // 48s full cycle
+    autoTod = (autoTod + (dt || 0) / 720) % 1; // 12 min full cycle, slow walk into night
     return autoTod;
   }
 
@@ -134,6 +134,8 @@ export function createDayNight(ctx) {
       return mode;
     },
     setAutoTod(t) { autoTod = t; },
+    getSunPosition() { return sunMesh.position; },
+    getMoonPosition() { return moonMesh.position; },
     update(dt, forcedTod) {
       const tod = resolveTod(forcedTod, dt);
       return apply(tod);

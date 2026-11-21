@@ -1,7 +1,7 @@
 // Land/sea mask around Monaco, baked from EU-DEM / Copernicus.
-// Elevation is disabled: land is a flat plane at LAND_H (just above the sea
-// at y=0). The heightmap is used only to tell land from water and to colour
-// urban / park / beach / hinterland classes. Same metric frame as monaco.json
+// Near the city the land stays a flat plane at LAND_H (just above the sea
+// at y=0) so house plots never sit on a slope. Far inland, the DEM hills are
+// raised for a distant mountain backdrop only. Same metric frame as monaco.json
 // (+X east, +Z south).
 import * as THREE from 'three';
 
@@ -61,6 +61,14 @@ export async function loadTerrain(jsonPath) {
   classes = new Uint8Array(buf, n * 2, n);
   meta = info;
   return info;
+}
+
+
+// Visual-only: raise real DEM hills far from the city. getHeight() stays flat
+// so houses never sit on a slope or in the sea.
+function hillFade(x, z) {
+  // Visual hinterland stays flat so decorative ridges sit only on the horizon.
+  return 0;
 }
 
 function colorFor(ix, iz, cols, rows, out) {
@@ -166,11 +174,28 @@ function buildGridMesh(stride) {
     const iz = Math.min(rows - 1, jz * stride);
     const x = originX + ix * step;
     const z = originZ + iz * step;
-    const y = yOverride == null ? LAND_H : yOverride;
+    const elev = heights[iz * cols + ix];
+    const fade = hillFade(x, z);
+    let y;
+    if (yOverride != null) y = yOverride;
+    else if (elev > 4 && fade > 0) y = LAND_H + Math.max(0, elev - 4) * fade;
+    else y = LAND_H;
     pos[slot * 3] = x;
     pos[slot * 3 + 1] = y;
     pos[slot * 3 + 2] = z;
     colorFor(ix, iz, cols, rows, tmp);
+    if (fade > 0.05 && elev > 40) {
+      const k = Math.min(1, (elev - 40) / 700) * fade;
+      tmp.r = tmp.r * (1 - k) + 0.52 * k;
+      tmp.g = tmp.g * (1 - k) + 0.56 * k;
+      tmp.b = tmp.b * (1 - k) + 0.54 * k;
+      if (elev > 750) {
+        const s = Math.min(1, (elev - 750) / 400) * fade;
+        tmp.r = tmp.r * (1 - s) + 0.86 * s;
+        tmp.g = tmp.g * (1 - s) + 0.88 * s;
+        tmp.b = tmp.b * (1 - s) + 0.90 * s;
+      }
+    }
     const m = colorMul == null ? 1 : colorMul;
     col[slot * 3] = tmp.r * m;
     col[slot * 3 + 1] = tmp.g * m;

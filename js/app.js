@@ -3,8 +3,16 @@ import { OrbitControls } from '../vendor/OrbitControls.js';
 import { createHouse, createNameSprite, pointsToLevel, createYacht, heightForLevel, styleFromName, yachtLengthForLevel } from './house.js';
 import { makeLabelLayer } from './labels.js';
 import { createDayNight, createLamps } from './sky.js';
+import { createHorizonMountains } from './scenery.js';
+import { createFlocks } from './flocks.js';
+import { createWeather, WEATHER_AR } from './weather.js';
+import { createCelebrations, highestMilestone } from './celebrate.js';
+import { createTour } from './tour.js';
 import { buildResidents } from './plots.js';
+import { assignBlockPlots, createBlockStreets } from './blocks.js';
+import { initOwner } from './owner.js';
 import { createCrowd } from './crowd.js';
+import { createWedding } from './wedding.js';
 import { loadTerrain, getHeight, buildTerrainMesh, terrainAttribution, LAND_H } from './terrain.js';
 
 const params = new URLSearchParams(location.search);
@@ -65,7 +73,7 @@ let currentSeed = START_SEED;
 let demo = { active: RECORD, t: 0 };
 let badgeEl, searchInput, levelSlider, levelLabel, foundMsg;
 let hemiLight, sunLight, fillLight, skyMesh;
-let dayNight = null, lamps = null, crowd = null;
+let dayNight = null, lamps = null, crowd = null, birds = null, weather = null, celebrations = null, tour = null, wedding = null, blockLayout = null, blockStreets = null;
 let allResidents = [];
 let selectedResident = null;
 let plotTents = []; // full procedural tents + tags for real residents (not the selected hero)
@@ -551,8 +559,16 @@ function arNum(n) {
 function overviewCamera() {
   const n = crowd ? crowd.count : 1;
   const extra = n > 2000 ? Math.min(2800, Math.sqrt(n) * 8) : 0;
-  const target = new THREE.Vector3(80, groundY(80, 200), 200);
-  const pos = new THREE.Vector3(520, 640 + extra * 0.45, 2100 + extra);
+  const tall = (typeof window !== 'undefined') && window.innerHeight > window.innerWidth * 1.15;
+  if (tall) {
+    // Public mobile: lower and closer so the colourful city fills the screen,
+    // with only a thin strip of sea and distant mountains on the horizon.
+    const target = new THREE.Vector3(150, groundY(150, -20) + 10, -20);
+    const pos = new THREE.Vector3(285, 168 + extra * 0.1, 560 + extra * 0.22);
+    return { pos, target };
+  }
+  const target = new THREE.Vector3(120, groundY(120, 50) + 8, 50);
+  const pos = new THREE.Vector3(400, 250 + extra * 0.2, 980 + extra * 0.35);
   return { pos, target };
 }
 
@@ -636,6 +652,7 @@ function setCamMode(mode, instant = false) {
 }
 
 function cycleCamMode() {
+  if (tour && tour.pause) tour.pause();
   let i = CAM_CYCLE.indexOf(camMode);
   for (let k = 0; k < CAM_CYCLE.length; k++) {
     i = (i + 1) % CAM_CYCLE.length;
@@ -680,7 +697,174 @@ function smooth(t) {
   return t * t * (3 - 2 * t);
 }
 
+
+const CAM_BOUNDS = { minX: -2000, maxX: 2000, minZ: -2200, maxZ: 2200 };
+
+function clampFreeCamera() {
+  if (!camera || !controls) return;
+  if (camMode !== 'free') return;
+  if (wedding && wedding.isCam()) return;
+  const t = controls.target;
+  t.x = Math.max(CAM_BOUNDS.minX, Math.min(CAM_BOUNDS.maxX, t.x));
+  t.z = Math.max(CAM_BOUNDS.minZ, Math.min(CAM_BOUNDS.maxZ, t.z));
+  const tgtMin = (typeof groundY === 'function' ? groundY(t.x, t.z) : 2.6) + 1.0;
+  if (t.y < tgtMin) t.y = tgtMin;
+  const c = camera.position;
+  c.x = Math.max(CAM_BOUNDS.minX - 500, Math.min(CAM_BOUNDS.maxX + 500, c.x));
+  c.z = Math.max(CAM_BOUNDS.minZ - 500, Math.min(CAM_BOUNDS.maxZ + 500, c.z));
+  const camMin = (typeof groundY === 'function' ? groundY(c.x, c.z) : 2.6) + 8;
+  if (c.y < camMin) c.y = camMin;
+}
+
+let tapRipple = null;
+let tapRippleAge = 0;
+const TAP_RIPPLE_DUR = 0.95;
+
+function ensureTapRipple() {
+  if (tapRipple) return tapRipple;
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(0.35, 0.7, 40),
+    new THREE.MeshBasicMaterial({
+      color: 0xffe08a,
+      transparent: true,
+      opacity: 0.9,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    }),
+  );
+  ring.rotation.x = -Math.PI / 2;
+  const disc = new THREE.Mesh(
+    new THREE.CircleGeometry(0.28, 24),
+    new THREE.MeshBasicMaterial({
+      color: 0xfff6df,
+      transparent: true,
+      opacity: 0.55,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    }),
+  );
+  disc.rotation.x = -Math.PI / 2;
+  disc.position.y = 0.01;
+  const g = new THREE.Group();
+  g.add(ring, disc);
+  g.visible = false;
+  g.userData.ring = ring;
+  g.userData.disc = disc;
+  scene.add(g);
+  tapRipple = g;
+  return g;
+}
+
+function showTapRipple(x, y, z) {
+  const g = ensureTapRipple();
+  g.position.set(x, y, z);
+  g.scale.set(1, 1, 1);
+  g.visible = true;
+  g.userData.ring.material.opacity = 0.95;
+  g.userData.disc.material.opacity = 0.55;
+  tapRippleAge = 0;
+}
+
+function tickTapRipple(dt) {
+  if (!tapRipple || !tapRipple.visible) return;
+  tapRippleAge += Math.max(0, dt || 0.016);
+  const u = Math.min(1, tapRippleAge / TAP_RIPPLE_DUR);
+  const s = 1 + u * 3.2;
+  tapRipple.scale.set(s, 1, s);
+  tapRipple.userData.ring.material.opacity = 0.95 * (1 - u);
+  tapRipple.userData.disc.material.opacity = 0.55 * (1 - u) * (1 - u);
+  if (u >= 1) tapRipple.visible = false;
+}
+
+function pickGround(clientX, clientY) {
+  if (!camera || !renderer) return null;
+  const rect = renderer.domElement.getBoundingClientRect();
+  const w = rect.width || 1, h = rect.height || 1;
+  const mouse = new THREE.Vector2(
+    ((clientX - rect.left) / w) * 2 - 1,
+    -((clientY - rect.top) / h) * 2 + 1,
+  );
+  const ray = new THREE.Raycaster();
+  ray.setFromCamera(mouse, camera);
+  if (mapRoot) {
+    const hits = ray.intersectObject(mapRoot, true);
+    if (hits && hits.length) {
+      const p = hits[0].point;
+      return { x: p.x, z: p.z, y: groundY(p.x, p.z) };
+    }
+  }
+  const hit = new THREE.Vector3();
+  const guessY = (controls && controls.target) ? controls.target.y : 0;
+  const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -guessY);
+  if (ray.ray.intersectPlane(plane, hit)) {
+    return { x: hit.x, z: hit.z, y: groundY(hit.x, hit.z) };
+  }
+  plane.constant = 0;
+  if (ray.ray.intersectPlane(plane, hit)) {
+    return { x: hit.x, z: hit.z, y: groundY(hit.x, hit.z) };
+  }
+  return null;
+}
+
+function flyToPoint(x, z, dur = 0.9) {
+  if (!camera || !controls) return;
+  if (tour && tour.pause) tour.pause();
+  setCamMode('free', true);
+  const gy = groundY(x, z);
+  const toT = new THREE.Vector3(x, gy + 1.2, z);
+  const offset = camera.position.clone().sub(controls.target);
+  const toP = toT.clone().add(offset);
+  const camMin = groundY(toP.x, toP.z) + 8;
+  if (toP.y < camMin) toP.y = camMin;
+  toP.x = Math.max(CAM_BOUNDS.minX - 500, Math.min(CAM_BOUNDS.maxX + 500, toP.x));
+  toP.z = Math.max(CAM_BOUNDS.minZ - 500, Math.min(CAM_BOUNDS.maxZ + 500, toP.z));
+  toT.x = Math.max(CAM_BOUNDS.minX, Math.min(CAM_BOUNDS.maxX, toT.x));
+  toT.z = Math.max(CAM_BOUNDS.minZ, Math.min(CAM_BOUNDS.maxZ, toT.z));
+  flyTo(toP, toT, dur);
+  showTapRipple(toT.x, gy + 0.18, toT.z);
+}
+
+function bindTapToFly() {
+  const canvas = renderer && renderer.domElement;
+  if (!canvas || canvas.__tapToFlyBound) return;
+  canvas.__tapToFlyBound = true;
+  const pointers = new Set();
+  let tap = null;
+  let skipBecauseWedding = false;
+  const THRESH = 10;
+  canvas.addEventListener('pointerdown', (e) => {
+    pointers.add(e.pointerId);
+    if (pointers.size > 1) { tap = null; return; }
+    skipBecauseWedding = !!(wedding && wedding.isCam());
+    tap = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), dragged: false };
+  }, { passive: true });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!tap || e.pointerId !== tap.id) return;
+    if (Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > THRESH) tap.dragged = true;
+  }, { passive: true });
+  function endPointer(e) {
+    pointers.delete(e.pointerId);
+    const rec = tap;
+    if (!rec || e.pointerId !== rec.id) {
+      if (pointers.size === 0) tap = null;
+      return;
+    }
+    tap = null;
+    if (skipBecauseWedding) return; // wedding cam consumes this tap as an exit
+    if (rec.dragged) return;
+    if (performance.now() - rec.t > 450) return;
+    if (camMode !== 'free') return;
+    if (MODE !== 'map' || RECORD) return;
+    const hit = pickGround(rec.x, rec.y);
+    if (!hit) return;
+    flyToPoint(hit.x, hit.z);
+  }
+  canvas.addEventListener('pointerup', endPointer, { passive: true });
+  canvas.addEventListener('pointercancel', endPointer, { passive: true });
+}
+
 function setCameraView(view, instant = false) {
+  if (tour && tour.pause) tour.pause();
   if (view === 'overview' || view === 'free') setCamMode('free', true);
   if (view === 'house' || view === 'yacht' || view === 'car') {
     setCamMode(view === 'house' ? 'house' : view, instant);
@@ -798,6 +982,7 @@ function searchResident(q) {
     found = selectedResident || { name: RESIDENT.name, seed: currentSeed, level: currentLevel, x: currentPlot().x, z: currentPlot().z, i: 0, example: true };
   }
   if (found) {
+    if (tour && tour.pause) tour.pause();
     selectResident(found, true);
     if (foundMsg) {
       foundMsg.textContent = found.example ? (`لقينا بيت ${publicLabel(found)} (مثال)`) : (`لقينا ${publicLabel(found)}`);
@@ -1665,9 +1850,123 @@ function applyPromoV4(t) {
   controls.target.copy(view.target);
 }
 
+
+function projectWorld(x, y, z, w, h) {
+  const v = new THREE.Vector3(x, y, z).project(camera);
+  return {
+    x: (v.x * 0.5 + 0.5) * w,
+    y: (-v.y * 0.5 + 0.5) * h,
+    z: v.z,
+    inView: v.z >= -1 && v.z <= 1 && v.x >= -1.15 && v.x <= 1.15 && v.y >= -1.15 && v.y <= 1.15,
+  };
+}
+
+// Keep every visible name sitting directly above its own house. Hide a tag
+// when its tent is too small / off-screen, or when the tag would look
+// attached to a neighboring house (common at low camera angles).
+function cullHouseLabels() {
+  if (!labelLayer || !camera || !renderer) return;
+  const rect = renderer.domElement.getBoundingClientRect();
+  const w = rect.width || window.innerWidth;
+  const h = rect.height || window.innerHeight;
+  const houses = [];
+
+  function pushHouse(tag, group, getHeight, getPad, name) {
+    if (!tag || !group || !group.visible) return;
+    const wp = new THREE.Vector3();
+    group.getWorldPosition(wp);
+    const hh = getHeight ? getHeight() : 3.2;
+    const pad = getPad ? getPad() : { w: 10, d: 10 };
+    const roof = projectWorld(wp.x, wp.y + hh, wp.z, w, h);
+    const ground = projectWorld(wp.x, wp.y, wp.z, w, h);
+    const padL = projectWorld(wp.x - (pad.w || 10) * 0.5, wp.y, wp.z, w, h);
+    const padR = projectWorld(wp.x + (pad.w || 10) * 0.5, wp.y, wp.z, w, h);
+    houses.push({
+      tag, name: name || '',
+      roof, ground,
+      padHalf: Math.max(10, Math.abs(padR.x - padL.x) * 0.5),
+      screenH: Math.abs(ground.y - roof.y),
+      camDist: camera.position.distanceTo(wp),
+    });
+  }
+
+  if (house && houseTag) pushHouse(houseTag, house.group, () => house.getHeight(), () => house.getPad && house.getPad(), (selectedResident && selectedResident.name) || '');
+  for (const item of plotTents) {
+    if (!item.house || !item.tag) continue;
+    pushHouse(item.tag, item.house.group, () => item.house.getHeight(), () => item.house.getPad && item.house.getPad(), item.resident && item.resident.name);
+  }
+
+  const hide = (tag) => { if (tag && tag.show) tag.show(false); else if (tag && tag.el) tag.el.style.display = 'none'; };
+
+  for (const a of houses) {
+    if (!a.tag || !a.tag.visible || !a.tag.inView) continue;
+    const el = a.tag.el;
+    if (!el || el.style.display === 'none') continue;
+    const br = el.getBoundingClientRect();
+    if (br.width < 2 || br.height < 2) { hide(a.tag); continue; }
+    const lx = (br.left + br.right) / 2;
+    const lyBot = br.bottom;
+
+    // Tent itself must be a readable size and on screen.
+    if (!a.roof.inView || a.screenH < 16 || a.roof.y < 4 || a.ground.y > h - 4) {
+      hide(a.tag);
+      continue;
+    }
+    // Label must sit above this tent: x-aligned, bottom near the roof, not sunk into the pad.
+    const maxDx = Math.max(26, a.padHalf * 0.85, a.screenH * 0.65);
+    if (Math.abs(lx - a.roof.x) > maxDx) { hide(a.tag); continue; }
+    if (lyBot > a.ground.y - 2) { hide(a.tag); continue; }
+    if (lyBot < a.roof.y - Math.max(90, a.screenH * 1.8)) { hide(a.tag); continue; }
+
+    let drop = false;
+    for (const b of houses) {
+      if (b === a) continue;
+      const dOwn = Math.hypot(lx - a.roof.x, lyBot - a.roof.y);
+      const dOther = Math.hypot(lx - b.roof.x, lyBot - b.roof.y);
+      if (b.roof.inView && dOther + 10 < dOwn) { drop = true; break; }
+      const half = Math.max(14, b.padHalf, b.screenH * 0.6);
+      const overlapsPad = lx > b.roof.x - half && lx < b.roof.x + half && br.bottom > b.roof.y - 8 && br.top < b.ground.y + 8;
+      if (overlapsPad && b.camDist < a.camDist - 1) { drop = true; break; }
+    }
+    if (drop) hide(a.tag);
+  }
+}
+
+
+function celebrationHouses() {
+  const list = [];
+  for (const r of allResidents || []) {
+    const level = r.level || 1;
+    let x = r.x, z = r.z, y, height;
+    const isHero = selectedResident && r.i === selectedResident.i && house && house.group;
+    if (isHero) {
+      x = house.group.position.x;
+      z = house.group.position.z;
+      height = house.getHeight ? house.getHeight() : heightForLevel(level);
+      y = house.group.position.y + height;
+    } else {
+      const item = (plotTents || []).find((it) => it.resident && it.resident.id === r.id);
+      if (item && item.house && item.house.group) {
+        x = item.house.group.position.x;
+        z = item.house.group.position.z;
+        height = item.house.getHeight ? item.house.getHeight() : heightForLevel(level);
+        y = item.house.group.position.y + height;
+      } else if (x != null && z != null) {
+        height = heightForLevel(level);
+        y = (typeof groundY === 'function' ? groundY(x, z) : 2.6) + height;
+      } else {
+        continue;
+      }
+    }
+    list.push({ id: r.id, level, celebrated_level: r.celebrated_level, x, y, z, height, rec: r });
+  }
+  return list;
+}
+
 function renderFrame(timeSec, dt) {
   if (!RECORD && dayNight) {
-    lastSky = dayNight.update(dt || 0, null);
+    const lock = (typeof window !== 'undefined' && window.__lockTod != null) ? window.__lockTod : null;
+    lastSky = dayNight.update(dt || 0, lock);
     if (lamps) lamps.setNight(lastSky.night);
     if (house && house.setNightFactor) house.setNightFactor(lastSky.night);
     for (const item of plotTents) {
@@ -1676,6 +1975,14 @@ function renderFrame(timeSec, dt) {
     if (crowd && crowd.setNight) crowd.setNight(lastSky.night);
   }
   if (waterUniforms) waterUniforms.uTime.value = timeSec;
+  if (!RECORD && weather) {
+    weather.update(dt || 0, timeSec, {
+      hemi: hemiLight, sun: sunLight, fill: fillLight, fog: scene.fog, renderer,
+    });
+  }
+  if (!RECORD && birds) birds.tick(timeSec, dt || 0.016, lastSky.night);
+  if (!RECORD && celebrations) celebrations.tick(timeSec, dt || 0, lastSky.night);
+  if (!RECORD && wedding) wedding.update(dt || 0, lastSky.night, timeSec);
   if (yachtObj && yachtObj.group.visible && yachtObj.tick) yachtObj.tick(timeSec);
   if (house && house.group.visible) {
     house.tick(timeSec);
@@ -1705,6 +2012,7 @@ function renderFrame(timeSec, dt) {
     const w = r.width || window.innerWidth;
     const h = r.height || window.innerHeight;
     labelLayer.update(camera, w, h);
+    cullHouseLabels();
   }
 }
 
@@ -1727,15 +2035,31 @@ function initRenderer() {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = false; // light on phones + reliable in swiftshader
   scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0x9ec9e0, 2600, 18000);
+  scene.fog = new THREE.Fog(0x9ec9e0, 1400, 9000);
   camera = new THREE.PerspectiveCamera(VERTICAL ? 58 : 50, window.innerWidth / window.innerHeight, 0.5, 32000);
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = !RECORD;
   controls.dampingFactor = 0.08;
-  controls.maxPolarAngle = Math.PI * 0.48;
-  controls.minDistance = 10;
-  controls.maxDistance = 9000;
-  controls.target.set(80, groundY(80, 200), 200);
+  controls.screenSpacePanning = false; // pan in the ground plane
+  controls.enablePan = true;
+  controls.enableRotate = true;
+  controls.enableZoom = true;
+  controls.minDistance = 6;
+  controls.maxDistance = 12000;
+  controls.minPolarAngle = 0.08;
+  controls.maxPolarAngle = Math.PI * 0.495;
+  controls.zoomSpeed = 1.15;
+  controls.panSpeed = 1.05;
+  controls.rotateSpeed = 0.72;
+  {
+    const MOUSE = THREE.MOUSE || { ROTATE: 0, DOLLY: 1, PAN: 2 };
+    const TOUCH = THREE.TOUCH || { ROTATE: 0, PAN: 1, DOLLY_PAN: 2, DOLLY_ROTATE: 3 };
+    // Map-style: 1-finger / left-drag pans, pinch zooms, 2-finger / right-drag rotates+tilts.
+    controls.mouseButtons = { LEFT: MOUSE.PAN, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.ROTATE };
+    controls.touches = { ONE: TOUCH.PAN, TWO: TOUCH.DOLLY_ROTATE };
+  }
+  if (typeof controls.listenToKeyEvents === 'function') controls.listenToKeyEvents(window);
+  controls.target.set(120, groundY(120, 50) + 8, 50);
 
   hemiLight = new THREE.HemisphereLight(0xfff2d8, 0x7a9a6a, 0.95);
   scene.add(hemiLight);
@@ -1813,17 +2137,37 @@ function bindHUD() {
       if (lab) lab.textContent = SKY_AR[m] || m;
     });
   }
+  const bw = $('btnWeather');
+  if (bw) {
+    const lab = $('weatherModeLabel');
+    if (lab && weather) lab.textContent = WEATHER_AR[weather.getMode()] || 'تلقائي';
+    bw.addEventListener('click', () => {
+      if (!weather) return;
+      const m = weather.cycleMode();
+      if (lab) lab.textContent = WEATHER_AR[m] || m;
+    });
+  }
   updateStats();
   applyLevel(currentLevel, false);
+  bindTapToFly();
 }
 
 function loop() {
+  if (typeof window !== 'undefined' && window.__promoHold) {
+    requestAnimationFrame(loop);
+    return;
+  }
   const now = performance.now();
   const dt = lastTick ? Math.min(0.08, (now - lastTick) / 1000) : 0.016;
   lastTick = now;
   if (!RECORD) {
     updateFly(now);
-    if (!fly && camMode === 'free') controls.update();
+    if (tour && MODE === 'map' && !(wedding && wedding.isCam())) tour.tick(dt, !!fly);
+    if (!fly && camMode === 'free' && !(tour && tour.isActive()) && !(wedding && wedding.isCam())) {
+      controls.update();
+      clampFreeCamera();
+    }
+    tickTapRipple(dt);
     renderFrame(clock.getElapsedTime(), dt);
     if (DEMO_N > 1) {
       fpsFrames += 1;
@@ -2001,13 +2345,28 @@ async function main() {
     else buildSheet(levelsData);
   } else {
     const plot = buildMap(data);
+    scene.add(createHorizonMountains());
     dayNight = createDayNight({
       scene, renderer, hemi: hemiLight, sun: sunLight, fill: fillLight,
       sky: skyMesh, fog: scene.fog, waterUniforms,
     });
     lamps = createLamps(scene, data, groundY);
+    birds = createFlocks(scene);
+    weather = createWeather({
+      scene, groundY,
+      getResidents: () => allResidents,
+      getSunPosition: () => dayNight && dayNight.getSunPosition && dayNight.getSunPosition(),
+    });
+    wedding = createWedding({
+      scene, camera, controls, groundY,
+      getTour: () => tour,
+    });
     const built = buildResidents(data, fileRes.residents || [], DEMO_N > 1 ? DEMO_N : 0);
     allResidents = built.residents;
+    if (DEMO_N <= 1) {
+      blockLayout = assignBlockPlots(allResidents, data);
+      blockStreets = createBlockStreets({ scene, groundY, data, layout: blockLayout });
+    }
     const first = allResidents[0] || { id: 1, name: 'بيت رقم 1', label: 'بيت رقم 1', seed: 'house_1', level: 1, x: plot.x, z: plot.z, i: 0, anonymous: true };
     currentSeed = first.seed || 'house_1';
     currentLevel = first.level || START_LEVEL;
@@ -2026,6 +2385,7 @@ async function main() {
     selectedResident = first;
     applyHouseLabel();
     if (allResidents.length > 1 && DEMO_N <= 1) placePlotTents();
+    if (weather && weather.rebuildRoofs) weather.rebuildRoofs(allResidents);
     if (PROMO && PROMO_VER !== 4 && !crowd) {
       const fill = buildResidents(data, [], 10000);
       crowd = createCrowd(scene, fill.residents, data);
@@ -2063,6 +2423,51 @@ async function main() {
 
   window.addEventListener('resize', onResize);
 
+
+  if (!RECORD && MODE === 'map') {
+    celebrations = createCelebrations({
+      scene,
+      getHouses: celebrationHouses,
+      labelLayer: () => labelLayer,
+    });
+    tour = createTour({
+      camera,
+      controls,
+      getHouses: celebrationHouses,
+      groundY,
+    });
+  }
+
+  if (!RECORD && MODE === 'map') {
+    initOwner({
+      getResidents: () => allResidents,
+      getMonacoData: () => monacoData,
+      getCanvas: () => renderer && renderer.domElement,
+      isHouse1At: (cx, cy) => {
+        if (!house || !house.group || !camera || !renderer) return false;
+        const rect = renderer.domElement.getBoundingClientRect();
+        const mouse = new THREE.Vector2(
+          ((cx - rect.left) / rect.width) * 2 - 1,
+          -((cy - rect.top) / rect.height) * 2 + 1,
+        );
+        const ray = new THREE.Raycaster();
+        ray.setFromCamera(mouse, camera);
+        const hits = ray.intersectObject(house.group, true);
+        return hits.length > 0;
+      },
+      onAdded: (rec) => {
+        rec.i = allResidents.length;
+        allResidents.push(rec);
+        if (monacoData) blockLayout = assignBlockPlots(allResidents, monacoData);
+        placePlotTents();
+        if (weather && weather.rebuildRoofs) weather.rebuildRoofs(allResidents);
+        updateStats();
+        if (celebrations && celebrations.resetScan) celebrations.resetScan();
+        if (rec.name) searchResident(rec.name);
+      },
+    });
+  }
+
   // public API for capture / hosting
   window.__ready = true;
   window.MonacoApp = {
@@ -2078,7 +2483,26 @@ async function main() {
     setCamMode: (m, instant) => setCamMode(m, instant !== false),
     cycleCam: cycleCamMode,
     setSkyMode: (m) => { if (dayNight) { dayNight.setMode(m); } },
-    setTod: (t) => { if (dayNight) lastSky = dayNight.update(0, t); },
+    setWeather: (m) => weather && weather.setMode(m),
+    getWeather: () => weather && weather.getMode(),
+    getWeatherKind: () => weather && weather.getKind(),
+    weather,
+    blockLayout,
+    blockStreets,
+    setTod: (t) => {
+      if (!dayNight) return lastSky;
+      lastSky = dayNight.update(0, t);
+      if (lamps) lamps.setNight(lastSky.night);
+      if (house && house.setNightFactor) house.setNightFactor(lastSky.night);
+      for (const item of plotTents) {
+        if (item.house && item.house.setNightFactor) item.house.setNightFactor(lastSky.night);
+      }
+      if (crowd && crowd.setNight) crowd.setNight(lastSky.night);
+      if (birds) birds.tick(0, 0.016, lastSky.night);
+      if (weather) weather.update(0, 0, { hemi: hemiLight, sun: sunLight, fill: fillLight, fog: scene.fog, renderer });
+      if (wedding && wedding.setNight) wedding.setNight(lastSky.night);
+      return lastSky;
+    },
     getFps: () => lastFps,
     measureFps: (seconds = 2) => new Promise((resolve) => {
       const t0 = performance.now();
@@ -2107,13 +2531,23 @@ async function main() {
       if (yachtTag) yachtTag.show(yOn);
     },
     frameCell: () => frameCellCamera(),
-    render: (t = 0) => renderFrame(t),
+    render: (t = 0, dt) => renderFrame(t, dt),
     duration: PROMO_VER === 4 ? PROMO_V4_DURATION : (PROMO ? PROMO_DURATION : DEMO_DURATION),
     plot: monacoData && monacoData.plot,
     resident: RESIDENT,
     exampleNames: EXAMPLE_NAMES,
     scene, camera, renderer, controls,
+    celebrations,
+    birds,
+    tour,
+    wedding,
+    flyToPoint,
+    enterWeddingCam: () => wedding && wedding.enterCam(),
+    exitWeddingCam: () => wedding && wedding.exitCam(),
+    isWeddingCam: () => !!(wedding && wedding.isCam()),
+    getWeddingCenter: () => wedding && wedding.getCenter(),
 
+    cullHouseLabels,
     debugLabels: () => {
       const pr = renderer.getPixelRatio() || 1;
       const w = renderer.domElement.width / pr, h = renderer.domElement.height / pr;

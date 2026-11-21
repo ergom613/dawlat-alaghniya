@@ -32,7 +32,11 @@ export function makeLabelLayer(rootEl) {
       },
       show(on) {
         item.visible = !!on;
-        if (!on) el.style.display = 'none';
+        if (!on) {
+          item.inView = false;
+          el.style.display = 'none';
+          el.style.transform = '';
+        }
       },
       remove() {
         el.remove();
@@ -44,25 +48,37 @@ export function makeLabelLayer(rootEl) {
     return item;
   }
 
+  function hide(item) {
+    item.inView = false;
+    item.el.style.display = 'none';
+    // Drop the last screen transform so a later display='' cannot
+    // resurrect the tag on top of a different house.
+    item.el.style.transform = '';
+  }
+
   function update(camera, width, height) {
     if (camera && camera.updateMatrixWorld) camera.updateMatrixWorld();
     for (const item of items) {
       if (!item.visible) {
-        item.el.style.display = 'none';
+        hide(item);
         continue;
       }
       v.copy(item.world).project(camera);
       if (v.z < -1.05 || v.z > 1.05) {
-        item.el.style.display = 'none';
+        hide(item);
         continue;
       }
       const x = (v.x * 0.5 + 0.5) * width;
       const y = (-v.y * 0.5 + 0.5) * height;
       if (x < -120 || y < -120 || x > width + 120 || y > height + 120) {
-        item.el.style.display = 'none';
+        hide(item);
         continue;
       }
       const anchor = item.kind === 'caption' ? 'translate(-50%, 16%)' : 'translate(-50%, -100%)';
+      item.inView = true;
+      item.sx = x;
+      item.sy = y;
+      item.ndcZ = v.z;
       item.el.style.display = 'block';
       item.el.style.transform = `${anchor} translate(${Math.round(x)}px, ${Math.round(y)}px)`;
     }

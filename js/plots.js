@@ -47,6 +47,10 @@ function harbourPolys(data) {
   return out;
 }
 
+export function isDryAt(data, x, z, margin = 8) {
+  return isDryLand(x, z, data.land || [], harbourPolys(data), margin);
+}
+
 export function monacoBBox(data) {
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
   for (const rings of data.land || []) {
@@ -120,11 +124,42 @@ export function levelForIndex(i) {
   return 26 + (h % 5);
 }
 
+export const MIN_LEVEL = 3;
+
+// Minimum house level is 3. Formula: max(3, 1 + floor(points/50)), capped at 30.
+// Exceptions (applied by the caller / stored data): house #1 stays 30, hnoo_kassar stays at least 10.
+export function levelFromPoints(points) {
+  const p = Math.max(0, Number(points) || 0);
+  return Math.max(MIN_LEVEL, Math.min(30, 1 + Math.floor(p / 50)));
+}
+
+export function nextFreePlots(data, occupied, count = 1) {
+  const list = monacoPlots(data);
+  const occ = (occupied || []).filter((o) => o && o.x != null && o.z != null);
+  const taken = new Set(occ.map((o) => o.x + ',' + o.z));
+  const minD2 = (STEP * 0.6) ** 2;
+  const out = [];
+  for (const p of list) {
+    if (taken.has(p.x + ',' + p.z)) continue;
+    let close = false;
+    for (const o of occ) {
+      if ((p.x - o.x) ** 2 + (p.z - o.z) ** 2 < minD2) { close = true; break; }
+    }
+    if (close) continue;
+    out.push({ x: p.x, z: p.z, kind: p.kind || 'monaco' });
+    taken.add(p.x + ',' + p.z);
+    occ.push({ x: p.x, z: p.z });
+    if (out.length >= count) break;
+  }
+  return out;
+}
+
 export function buildResidents(data, fileList, demoCount) {
   const wanted = demoCount > 1 ? demoCount : (fileList && fileList.length ? fileList.length : 1);
   const plots = allocatePlots(data, wanted);
   const n = plots.length;
   const out = new Array(n);
+  const placed = [];
   for (let i = 0; i < n; i++) {
     const file = fileList && fileList[i];
     const id = (file && file.id) || (i + 1);
@@ -132,8 +167,16 @@ export function buildResidents(data, fileList, demoCount) {
     const label = (file && file.label) || (anonymous ? ('بيت رقم ' + id) : '');
     const name = demoCount > 1 ? exampleName(i) : ((file && file.name) || label || ('بيت رقم ' + id));
     const seed = (file && file.seed) || (demoCount > 1 ? name : ('house_' + id));
-    let level = file && file.level ? file.level : (demoCount > 1 ? levelForIndex(i) : 3);
+    let level = file && file.level ? file.level : (demoCount > 1 ? levelForIndex(i) : MIN_LEVEL);
     if (demoCount > 1 && i === 0) level = 30;
+    let x, z, kind;
+    if (file && file.x != null && file.z != null && demoCount <= 1) {
+      x = file.x; z = file.z; kind = 'monaco';
+    } else {
+      const nxt = nextFreePlots(data, placed, 1)[0] || plots[i] || { x: 160, z: 65, kind: 'monaco' };
+      x = nxt.x; z = nxt.z; kind = nxt.kind || 'monaco';
+    }
+    placed.push({ x, z });
     out[i] = {
       i,
       id,
@@ -142,12 +185,17 @@ export function buildResidents(data, fileList, demoCount) {
       seed,
       anonymous: anonymous && demoCount <= 1,
       owner: !!(file && file.owner),
-      level: Math.max(3, Math.min(30, level | 0)),
-      x: (file && file.x != null && demoCount <= 1) ? file.x : plots[i].x,
-      z: (file && file.z != null && demoCount <= 1) ? file.z : plots[i].z,
-      kind: plots[i].kind,
+      level: (file && (file.owner || file.id === 1)) ? 30
+        : ((file && (file.name === 'hnoo_kassar' || file.seed === 'hnoo_kassar'))
+          ? Math.max(10, Math.min(30, level | 0))
+          : Math.max(demoCount > 1 ? 1 : MIN_LEVEL, Math.min(30, level | 0))),
+      points: (file && file.points != null) ? file.points : undefined,
+      x,
+      z,
+      kind,
       example: demoCount > 1,
     };
+    if (out[i].points === undefined) delete out[i].points;
   }
   return { residents: out, plots, monacoCount: monacoPlots(data).length, wanted };
 }

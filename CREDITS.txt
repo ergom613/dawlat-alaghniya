@@ -52,3 +52,16 @@ The 3D page shows: © OpenStreetMap contributors · Land outline: EU-DEM / Coper
 Day/night lighting, street lamps, procedural cars/yacht, and instanced follower houses are original to this project.
 Map data © OpenStreetMap contributors (ODbL).
 Stress-test names are generated examples, not real people.
+
+Daily progress video — music and SFX (2026-11-21)
+-------------------------------------------------
+Music: “Sports Highlights” by Ahjay Stelino, Mixkit Stock Music Free License
+https://assets.mixkit.co/music/51/51.mp3
+https://mixkit.co/license/#musicFree
+
+SFX (Mixkit Sound Effects Free License, https://mixkit.co/license/#sfxFree):
+- Cinematic whoosh fast transition (1492)
+- Cinematic whoosh deep impact (1143)
+- Movie trailer epic impact (2908)
+
+Full licence notes: monaco/daily/music_license.txt
