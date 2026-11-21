@@ -400,9 +400,17 @@ export function createSouq({ scene, groundY, quality }) {
     });
     const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
     warmMats.push({ m: mat, day: 0xe6dccb, night: 0xffffff });
-    const pl = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.5), mat);
-    pl.position.set(shopFrontX(s.side) - s.side * 0.75, 3.45, s.z);
+    // Larger, slightly lower, closer to the arch so the name is readable from the nave.
+    const back = new THREE.Mesh(
+      new THREE.BoxGeometry(3.15, 0.7, 0.06),
+      B(0x3a0c0c, { color: 0x3a0c0c }),
+    );
+    back.position.set(shopFrontX(s.side) - s.side * 0.32, 3.18, s.z);
+    back.rotation.y = s.ry;
+    const pl = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 0.62), mat);
+    pl.position.set(shopFrontX(s.side) - s.side * 0.36, 3.18, s.z);
     pl.rotation.y = s.ry;
+    signGroup.add(back);
     signGroup.add(pl);
   }
 
