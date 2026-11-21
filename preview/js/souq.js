@@ -2,8 +2,9 @@
 // inland plot west of the dabke plaza (preview only). Procedural geometry,
 // InstancedMesh shop repeats, interiors built lazily on first enter.
 // Interior lighting: one sweep of the hanging فوانيس from one end of the
-// nave to the other (color may change each pass); shop lamps + a few point
-// lights follow the same band. Animated only when the camera is near.
+// nave to the other; side-wall strings, rib lights and sconces ride the same
+// band. Shops are filled like a mall (themed goods + Arabic signs + shoppers).
+// Animated only when the camera is near.
 //
 // Public hooks (no edits to app.js required):
 //   window.cityPlaces.souq = { position, entrance, inside }
@@ -13,6 +14,7 @@ import * as THREE from 'three';
 import * as layout from './layout.js';
 import { palm } from './landmarks.js';
 import { PERF } from './gfx.js';
+import { createHeroPerson, pickType } from './people.js';
 
 const SOUQ = layout.SOUQ || { x: -360, z: 30, w: 32, d: 168 };
 
@@ -180,16 +182,21 @@ function carpetTex() {
 }
 
 const SHOP_KINDS = [
-  { key: 'spices', name: 'بهارات', awn: ['#8a1e1e', '#f3e6c8'], acc: 0xb85a1a },
-  { key: 'fabric', name: 'أقمشة', awn: ['#1f6b47', '#f3e6c8'], acc: 0x2a6b8c },
-  { key: 'sweets', name: 'حلويات', awn: ['#a33a6a', '#f3e6c8'], acc: 0xe8c4d0 },
-  { key: 'gold', name: 'ذهب', awn: ['#8a6a12', '#f7efd2'], acc: 0xd9a92a },
-  { key: 'coffee', name: 'بن', awn: ['#5a3a22', '#f3e6c8'], acc: 0x6b3f24 },
-  { key: 'carpet', name: 'سجاد', awn: ['#6b1d1d', '#e8d5a0'], acc: 0x7a2a2a },
-  { key: 'copper', name: 'نحاس', awn: ['#8a4a12', '#f3e6c8'], acc: 0xb87333 },
+  { key: 'watches', name: 'ساعات', awn: ['#2a2a2a', '#f3e6c8'], acc: 0xd9a92a },
+  { key: 'toys', name: 'ألعاب', awn: ['#c45a1a', '#f3e6c8'], acc: 0xe8c45a },
+  { key: 'phones', name: 'جوالات', awn: ['#1a3a5a', '#e8eef3'], acc: 0x8ab0c8 },
+  { key: 'clothes', name: 'ملابس', awn: ['#1f6b47', '#f3e6c8'], acc: 0x2a6b8c },
   { key: 'perfume', name: 'عطور', awn: ['#2e4a6b', '#f3e6c8'], acc: 0xc8a0d0 },
-  { key: 'soap', name: 'صابون', awn: ['#2e6b4a', '#f3e6c8'], acc: 0xd0e0c8 },
+  { key: 'gold', name: 'ذهب', awn: ['#8a6a12', '#f7efd2'], acc: 0xd9a92a },
+  { key: 'sweets', name: 'حلويات', awn: ['#a33a6a', '#f3e6c8'], acc: 0xe8c4d0 },
+  { key: 'shoes', name: 'أحذية', awn: ['#5a3a22', '#f3e6c8'], acc: 0x8a5a2a },
+  { key: 'bags', name: 'حقائب', awn: ['#6b1d1d', '#f3e6c8'], acc: 0x8a2a2a },
+  { key: 'coffee', name: 'بن', awn: ['#5a3a22', '#f3e6c8'], acc: 0x6b3f24 },
+  { key: 'spices', name: 'بهارات', awn: ['#8a1e1e', '#f3e6c8'], acc: 0xb85a1a },
+  { key: 'carpet', name: 'سجاد', awn: ['#6b1d1d', '#e8d5a0'], acc: 0x7a2a2a },
+  { key: 'fabric', name: 'أقمشة', awn: ['#1f6b47', '#f3e6c8'], acc: 0x2a6b8c },
   { key: 'lamps', name: 'فوانيس', awn: ['#4a2a6b', '#f3e6c8'], acc: 0xd9a92a },
+  { key: 'soap', name: 'صابون', awn: ['#2e6b4a', '#f3e6c8'], acc: 0xd0e0c8 },
 ];
 
 // ---- geometry constants (fits the reserved 32 × 168 m plot, street along Z)
@@ -388,8 +395,8 @@ export function createSouq({ scene, groundY, quality }) {
   // Signs «محل ١» … hanging in front of each shop
   const signGroup = new THREE.Group(); root.add(signGroup);
   for (const s of slots) {
-    const tex = signTexture(`محل ${arNum(s.n)}`, {
-      w: 768, h: 160, bg: '#5a1616', size: 92,
+    const tex = signTexture(s.kind.name, {
+      w: 768, h: 160, bg: '#5a1616', size: s.kind.name.length > 5 ? 78 : 92,
     });
     const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
     warmMats.push({ m: mat, day: 0xe6dccb, night: 0xffffff });
@@ -599,6 +606,89 @@ export function createSouq({ scene, groundY, quality }) {
     root,
   );
 
+  // Side-wall lights (both arcades): LED strips + string bulbs along the lintel,
+  // bulbs under the vault ribs, and a sconce above each shop. All instanced,
+  // all ride the same end-to-end sweep. No extra PointLights.
+  const sideStripPos = [];
+  const stripStep = isLow ? 4.6 : 2.3;
+  for (const side of [-1, 1]) {
+    for (let z = -HALF_L + 3; z <= HALF_L - 3; z += stripStep) {
+      sideStripPos.push({
+        x: side * (EAST - 0.10),
+        y: LINTEL + 0.28,
+        z,
+        sx: 0.12, sy: 1, sz: stripStep * 0.9,
+        color: LIGHT_PALETTE[0],
+      });
+    }
+  }
+  const sideStripMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff, transparent: true, opacity: 0.8, depthWrite: false,
+  });
+  const sideStripIM = instanced(new THREE.BoxGeometry(1, 0.08, 1), sideStripMat, sideStripPos, root);
+
+  const sideBulbPos = [];
+  const bulbStep = isLow ? 3.2 : 1.55;
+  for (const side of [-1, 1]) {
+    for (let z = -HALF_L + 2; z <= HALF_L - 2; z += bulbStep) {
+      sideBulbPos.push({
+        x: side * (EAST - 0.22),
+        y: LINTEL + 0.48,
+        z,
+        color: LIGHT_PALETTE[0],
+      });
+    }
+  }
+  const sideBulbMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff, transparent: true, opacity: 0.95, depthWrite: false,
+  });
+  const sideBulbIM = instanced(new THREE.SphereGeometry(0.09, 6, 5), sideBulbMat, sideBulbPos, root);
+
+  const ribBulbPos = [];
+  const ribAngles = isLow
+    ? [0.32, 0.62, Math.PI - 0.62, Math.PI - 0.32]
+    : [0.22, 0.45, 0.72, Math.PI - 0.72, Math.PI - 0.45, Math.PI - 0.22];
+  const ribR = VAULT_R - 0.18;
+  for (const rp of ribPos) {
+    for (const th of ribAngles) {
+      ribBulbPos.push({
+        x: Math.cos(th) * ribR,
+        y: LINTEL + 0.05 + Math.sin(th) * ribR,
+        z: rp.z,
+        color: LIGHT_PALETTE[0],
+      });
+    }
+  }
+  const ribBulbMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff, transparent: true, opacity: 0.95, depthWrite: false,
+  });
+  const ribBulbIM = instanced(new THREE.SphereGeometry(0.07, 6, 5), ribBulbMat, ribBulbPos, root);
+
+  const sconcePos = slots.map((s, i) => ({
+    x: shopFrontX(s.side) - s.side * 0.18,
+    y: LINTEL + 0.12,
+    z: s.z,
+    color: LIGHT_PALETTE[i % LIGHT_PALETTE.length],
+  }));
+  const sconceMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff, transparent: true, opacity: 0.95, depthWrite: false,
+  });
+  const sconceIM = instanced(new THREE.SphereGeometry(0.13, 8, 6), sconceMat, sconcePos, root);
+  instanced(
+    new THREE.ConeGeometry(0.12, 0.14, 8),
+    gold,
+    sconcePos.map((p) => ({ x: p.x, y: p.y + 0.12, z: p.z })),
+    root,
+  );
+
+  // Soft wash on the inner lintel faces so the upper sides are never pitch-black.
+  const sideWashMat = new THREE.MeshLambertMaterial({
+    color: 0xd4c19a, emissive: 0x2a1c0c, emissiveIntensity: 1, side: THREE.DoubleSide,
+  });
+  for (const side of [-1, 1]) {
+    box(root, sideWashMat, 0.06, 0.85, HALF_L * 2 - 6, side * (EAST - 0.05), LINTEL + 0.2, 0);
+  }
+
   // A few real point lights along the nave (skipped on low / when pointLights is off)
   const usePL = !isLow && PERF.pointLights !== false;
   const nPL = usePL ? (qName === 'high' ? 6 : 4) : 0;
@@ -625,7 +715,7 @@ export function createSouq({ scene, groundY, quality }) {
   function buildGoods() {
     if (interiorBuilt) return;
     interiorBuilt = true;
-    const maxItems = isLow ? 3 : 6;
+    const maxItems = isLow ? 4 : 7;
     const sackGeo = new THREE.SphereGeometry(0.32, 8, 6);
     const jarGeo = new THREE.CylinderGeometry(0.12, 0.14, 0.38, 8);
     const rollGeo = new THREE.CylinderGeometry(0.16, 0.16, 1.1, 8);
@@ -633,9 +723,19 @@ export function createSouq({ scene, groundY, quality }) {
     const crateGeo = new THREE.BoxGeometry(0.55, 0.32, 0.4);
     const potGeo = new THREE.CylinderGeometry(0.18, 0.22, 0.28, 8);
     const bottleGeo = new THREE.CylinderGeometry(0.05, 0.07, 0.32, 6);
+    const boxS = new THREE.BoxGeometry(0.22, 0.08, 0.28);
+    const boxM = new THREE.BoxGeometry(0.32, 0.22, 0.24);
+    const phoneGeo = new THREE.BoxGeometry(0.12, 0.22, 0.02);
+    const watchGeo = new THREE.BoxGeometry(0.12, 0.06, 0.16);
+    const shoeGeo = new THREE.BoxGeometry(0.28, 0.12, 0.14);
+    const bagGeo = new THREE.BoxGeometry(0.28, 0.32, 0.16);
+    const toyCube = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+    const toyBall = new THREE.SphereGeometry(0.12, 7, 6);
+    const hangerGeo = new THREE.BoxGeometry(0.08, 0.7, 0.4);
     const colors = {
       spices: [0xb85a1a, 0xc9a227, 0x8a1e1e, 0xd4a84a, 0x5a7a2a, 0x6b3f24],
       fabric: [0x8a1e1e, 0x1f6b47, 0x2a6b8c, 0xd9a92a, 0x6b1d5a, 0xe8d5a0],
+      clothes: [0x1a3a6b, 0x8a1e1e, 0x1f6b47, 0xe8d5a0, 0x2a2a2a, 0xc45a7a],
       sweets: [0xf2d0c8, 0xe8c45a, 0xd4a0b0, 0xf0e6c8, 0xc07040],
       gold: [0xd9a92a, 0xf3cf6a, 0xb8862a],
       coffee: [0x6b3f24, 0x4a2a18, 0xc4a07a],
@@ -644,84 +744,167 @@ export function createSouq({ scene, groundY, quality }) {
       perfume: [0xc8a0d0, 0xe8d5b0, 0x6a8ab0, 0xd9a92a],
       soap: [0xd0e0c8, 0xf0e6c8, 0xc8dce0, 0xe8c4d0],
       lamps: [0xd9a92a, 0x3a2a18, 0xb8862a],
+      watches: [0xd9a92a, 0x2a2a2a, 0xc0c4c8, 0xf3cf6a],
+      toys: [0xe23a3a, 0x3a7ae2, 0xf0c430, 0x3cbf5a, 0xe86ad0],
+      phones: [0x1a1a1e, 0x3a3a42, 0x8ab0c8, 0xf3f6f8],
+      shoes: [0x3a2a18, 0x8a1e1e, 0x1a1a1a, 0xc4a07a, 0x2a4a6b],
+      bags: [0x6b1d1d, 0x2a2a2a, 0xc9a227, 0x5a3a22, 0x2a4a6b],
     };
     const matCache = new Map();
     const M = (hex) => {
       if (matCache.has(hex)) return matCache.get(hex);
       const m = L(hex); matCache.set(hex, m); return m;
     };
+    const batches = new Map();
+    const batch = (key, geo, mat, pose) => {
+      let b = batches.get(key);
+      if (!b) { b = { geo, mat, poses: [] }; batches.set(key, b); }
+      b.poses.push(pose);
+    };
+
+    // Shelves at the back of every shop (instanced)
+    const shelfBoard = [];
+    const shelfPost = [];
+    for (const s of slots) {
+      const fx = shopFrontX(s.side) + s.side * (SHOP_D - 1.2);
+      for (const y of [1.18, 1.88, 2.58]) {
+        shelfBoard.push({ x: fx, y, z: s.z, sx: 0.58, sy: 1, sz: SHOP_W * 0.74 });
+      }
+      for (const dz of [-SHOP_W * 0.37, SHOP_W * 0.37]) {
+        shelfPost.push({ x: fx, y: 1.9, z: s.z + dz, sx: 0.5, sy: 1, sz: 0.08 });
+      }
+    }
+    instanced(new THREE.BoxGeometry(1, 0.07, 1), wood, shelfBoard, interior);
+    instanced(new THREE.BoxGeometry(1, 2.05, 1), wood2, shelfPost, interior);
+
     for (const s of slots) {
       const cols = colors[s.kind.key] || colors.spices;
-      const baseX = shopFrontX(s.side) + s.side * 1.15;
-      const facing = s.side; // +1 east shops (goods sit further east / into the shop)
-      const inward = -facing; // toward the street is not used for placement
-      void inward;
-      const gx = baseX + facing * 0.2;
-      const place = (mesh, dx, y, dz) => {
-        mesh.position.set(gx + facing * dx, y, s.z + dz);
-        interior.add(mesh);
-        return mesh;
-      };
-      if (s.kind.key === 'fabric') {
-        for (let i = 0; i < maxItems; i++) {
-          const m = new THREE.Mesh(rollGeo, M(cols[i % cols.length]));
-          m.rotation.z = Math.PI / 2;
-          place(m, 0.3 + (i % 3) * 0.2, 1.55 + Math.floor(i / 3) * 0.34, (i % 3 - 1) * 0.7);
+      const facing = s.side;
+      const gx = shopFrontX(s.side) + facing * 1.35;
+      const back = 2.2; // further into the shop, on the shelves
+      const pose = (dx, y, dz, extra) => ({
+        x: gx + facing * dx, y, z: s.z + dz, ...(extra || {}),
+      });
+      const n = maxItems;
+      const key = s.kind.key;
+      if (key === 'fabric' || key === 'clothes') {
+        for (let i = 0; i < n + 2; i++) {
+          const geo = key === 'clothes' ? hangerGeo : rollGeo;
+          batch(key + i % cols.length, key === 'clothes' ? hangerGeo : rollGeo, M(cols[i % cols.length]), pose(
+            back - 0.1, key === 'clothes' ? 2.0 : 1.58 + (i % 3) * 0.28, (i - n / 2) * 0.45,
+            key === 'fabric' ? { rz: Math.PI / 2 } : {},
+          ));
         }
-      } else if (s.kind.key === 'gold') {
-        const caseM = new THREE.MeshLambertMaterial({ color: 0x9fd2e4, transparent: true, opacity: 0.28, depthWrite: false });
-        place(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.55, 1.4), caseM), 0.1, 1.7, 0);
-        for (let i = 0; i < 4; i++) {
-          place(new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.08, 0.18), M(cols[i % cols.length])), 0.1, 1.48, (i - 1.5) * 0.28);
-        }
-      } else if (s.kind.key === 'carpet') {
-        for (let i = 0; i < Math.min(maxItems, 4); i++) {
-          const m = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.12, 0.7), M(cols[i % cols.length]));
-          m.rotation.y = 0.15 * i;
-          place(m, 0.8, 1.5 + i * 0.13, (i - 1) * 0.15);
-        }
-      } else if (s.kind.key === 'lamps') {
-        for (let i = 0; i < maxItems; i++) {
-          const g = new THREE.Group();
-          const body = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), glow.bulbMat);
-          const cage = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), M(cols[0]));
-          cage.material = P(0xd9a92a, { shininess: 70, wireframe: false, transparent: true, opacity: 0.85 });
-          g.add(body); g.add(cage);
-          place(g, 0.2, 1.7, (i - (maxItems - 1) / 2) * 0.55);
-        }
-      } else if (s.kind.key === 'sweets') {
-        for (let i = 0; i < maxItems; i++) {
-          place(new THREE.Mesh(trayGeo, M(0x8a5a2a)), 0.05, 1.46, (i - (maxItems - 1) / 2) * 0.55);
-          for (let k = 0; k < 5; k++) {
-            const sw = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 5), M(cols[k % cols.length]));
-            place(sw, 0.05 + (k % 3 - 1) * 0.12, 1.54, (i - (maxItems - 1) / 2) * 0.55 + (Math.floor(k / 3) - 0.5) * 0.12);
+        if (key === 'clothes') {
+          for (let i = 0; i < n; i++) {
+            batch('fold' + (i % cols.length), boxM, M(cols[(i + 2) % cols.length]), pose(0.35, 1.5 + (i % 2) * 0.24, (i - n / 2) * 0.5));
           }
         }
-      } else if (s.kind.key === 'perfume' || s.kind.key === 'soap') {
-        const geo = s.kind.key === 'perfume' ? bottleGeo : crateGeo;
-        for (let i = 0; i < maxItems + 2; i++) {
-          place(new THREE.Mesh(geo, M(cols[i % cols.length])), (i % 3) * 0.2, s.kind.key === 'soap' ? 1.6 : 1.62, (Math.floor(i / 3) - 1) * 0.45);
+      } else if (key === 'gold' || key === 'watches') {
+        const caseM = new THREE.MeshLambertMaterial({ color: 0x9fd2e4, transparent: true, opacity: 0.28, depthWrite: false });
+        batch(key + 'case', new THREE.BoxGeometry(0.9, 0.5, key === 'watches' ? 1.6 : 1.4), caseM, pose(0.15, 1.72, 0));
+        const g = key === 'watches' ? watchGeo : boxS;
+        const count = key === 'watches' ? n + 4 : 5;
+        for (let i = 0; i < count; i++) {
+          batch(key + (i % cols.length), g, M(cols[i % cols.length]), pose(
+            0.15, 1.48, (i - (count - 1) / 2) * 0.22,
+          ));
         }
-      } else if (s.kind.key === 'copper') {
-        for (let i = 0; i < maxItems; i++) {
-          place(new THREE.Mesh(potGeo, M(cols[i % cols.length])), (i % 2) * 0.35, 1.58, (Math.floor(i / 2) - 1) * 0.5);
+        for (let i = 0; i < n; i++) {
+          batch(key + 'sh' + (i % cols.length), g, M(cols[i % cols.length]), pose(back, 1.92 + (i % 2) * 0.22, (i - n / 2) * 0.4));
+        }
+      } else if (key === 'carpet') {
+        for (let i = 0; i < Math.min(n, 5); i++) {
+          batch('rug' + (i % cols.length), new THREE.BoxGeometry(1.1, 0.12, 0.7), M(cols[i % cols.length]), pose(
+            0.9, 1.5 + i * 0.13, (i - 1) * 0.12, { ry: 0.12 * i },
+          ));
+        }
+      } else if (key === 'lamps') {
+        for (let i = 0; i < n; i++) {
+          batch('lampb' + i, new THREE.SphereGeometry(0.16, 8, 6), glow.bulbMat, pose(0.25, 1.7, (i - (n - 1) / 2) * 0.55));
+          batch('lampc' + (i % cols.length), new THREE.SphereGeometry(0.2, 8, 6), P(cols[i % cols.length] || 0xd9a92a, { shininess: 70, transparent: true, opacity: 0.85 }), pose(0.25, 1.7, (i - (n - 1) / 2) * 0.55));
+        }
+      } else if (key === 'sweets') {
+        for (let i = 0; i < n; i++) {
+          batch('tray', trayGeo, M(0x8a5a2a), pose(0.1, 1.46, (i - (n - 1) / 2) * 0.5));
+          for (let k = 0; k < 5; k++) {
+            batch('sweet' + (k % cols.length), new THREE.SphereGeometry(0.07, 6, 5), M(cols[k % cols.length]), pose(
+              0.1 + (k % 3 - 1) * 0.12, 1.54, (i - (n - 1) / 2) * 0.5 + (Math.floor(k / 3) - 0.5) * 0.12,
+            ));
+          }
+        }
+      } else if (key === 'perfume') {
+        for (let i = 0; i < n + 4; i++) {
+          batch('bot' + (i % cols.length), bottleGeo, M(cols[i % cols.length]), pose(
+            (i % 3) * 0.18, i < n ? 1.62 : 1.95, (Math.floor(i / 3) - 1.2) * 0.38,
+          ));
+        }
+      } else if (key === 'soap') {
+        for (let i = 0; i < n + 2; i++) {
+          batch('soap' + (i % cols.length), crateGeo, M(cols[i % cols.length]), pose((i % 3) * 0.2, 1.6, (Math.floor(i / 3) - 1) * 0.45));
+        }
+      } else if (key === 'copper') {
+        for (let i = 0; i < n; i++) {
+          batch('pot' + (i % cols.length), potGeo, M(cols[i % cols.length]), pose((i % 2) * 0.35, 1.58, (Math.floor(i / 2) - 1) * 0.5));
+        }
+      } else if (key === 'phones') {
+        for (let i = 0; i < n + 5; i++) {
+          batch('ph' + (i % cols.length), phoneGeo, M(cols[i % cols.length]), pose(
+            (i % 2) * 0.25 + 0.1, 1.5 + Math.floor(i / 6) * 0.7, ((i % 6) - 2.5) * 0.32, { ry: facing * 0.1 },
+          ));
+        }
+        for (let i = 0; i < 3; i++) {
+          batch('phbox', boxM, M(0x3a3a42), pose(back, 1.92, (i - 1) * 0.5));
+        }
+      } else if (key === 'toys') {
+        for (let i = 0; i < n + 3; i++) {
+          const g = i % 2 ? toyBall : toyCube;
+          batch('toy' + (i % cols.length) + (i % 2), g, M(cols[i % cols.length]), pose(
+            0.2 + (i % 3) * 0.22, 1.5 + Math.floor(i / 6) * 0.35, (Math.floor(i / 3) - 1) * 0.45,
+          ));
+        }
+        for (let i = 0; i < n; i++) {
+          batch('toySh' + (i % cols.length), toyCube, M(cols[(i + 2) % cols.length]), pose(back, 1.95, (i - n / 2) * 0.42));
+        }
+      } else if (key === 'shoes') {
+        for (let i = 0; i < n + 3; i++) {
+          batch('shoe' + (i % cols.length), shoeGeo, M(cols[i % cols.length]), pose(
+            0.2, 1.48 + Math.floor(i / 4) * 0.28, ((i % 4) - 1.5) * 0.4, { ry: 0.4 },
+          ));
+        }
+        for (let i = 0; i < n; i++) {
+          batch('shoeB' + (i % cols.length), shoeGeo, M(cols[(i + 1) % cols.length]), pose(back, 1.95, (i - n / 2) * 0.45, { ry: 0.2 }));
+        }
+      } else if (key === 'bags') {
+        for (let i = 0; i < n + 2; i++) {
+          batch('bag' + (i % cols.length), bagGeo, M(cols[i % cols.length]), pose(
+            0.25 + (i % 2) * 0.2, 1.62, (Math.floor(i / 2) - 1) * 0.5,
+          ));
+        }
+        for (let i = 0; i < n; i++) {
+          batch('bagS' + (i % cols.length), bagGeo, M(cols[(i + 2) % cols.length]), pose(back, 1.98, (i - n / 2) * 0.45));
         }
       } else {
-        // spices / coffee / default: sacks + jars
-        for (let i = 0; i < maxItems; i++) {
-          const sack = new THREE.Mesh(sackGeo, M(cols[i % cols.length]));
-          sack.scale.set(1, 0.75, 1);
-          place(sack, 0.4 + (i % 2) * 0.35, 1.15, (Math.floor(i / 2) - 1) * 0.55);
+        // spices / coffee / default: sacks + jars on the counter and shelves
+        for (let i = 0; i < n; i++) {
+          batch('sack' + (i % cols.length), sackGeo, M(cols[i % cols.length]), pose(
+            0.5 + (i % 2) * 0.35, 1.15, (Math.floor(i / 2) - 1) * 0.55, { sy: 0.75 },
+          ));
         }
-        for (let i = 0; i < Math.min(4, maxItems); i++) {
-          place(new THREE.Mesh(jarGeo, M(cols[(i + 2) % cols.length])), 0.05, 1.6, (i - 1.5) * 0.4);
+        for (let i = 0; i < Math.min(5, n + 1); i++) {
+          batch('jar' + (i % cols.length), jarGeo, M(cols[(i + 2) % cols.length]), pose(0.1, 1.62, (i - 2) * 0.35));
+        }
+        for (let i = 0; i < n; i++) {
+          batch('jarS' + (i % cols.length), jarGeo, M(cols[i % cols.length]), pose(back, 1.98, (i - n / 2) * 0.4));
         }
       }
-      void crateGeo;
     }
+    for (const b of batches.values()) instanced(b.geo, b.mat, b.poses, interior);
     interior.visible = true;
     shadowize(interior, !isLow && qs && qs.shadows);
+    spawnShoppers();
   }
+
 
   function ensureInterior(force) {
     const app = window.MonacoApp;
@@ -731,6 +914,45 @@ export function createSouq({ scene, groundY, quality }) {
     const near = force || (dx * dx + dz * dz) < 90 * 90;
     if (near) buildGoods();
     interior.visible = near || interiorBuilt;
+  }
+
+  let shoppers = [];
+  function spawnShoppers() {
+    if (shoppers.length) return;
+    const n = isLow ? 3 : 7;
+    for (let i = 0; i < n; i++) {
+      const typ = pickType('souq' + i, { allowChild: i % 3 === 0 });
+      const person = createHeroPerson({ type: typ, name: '', seed: 'souq' + i });
+      if (person.setPlateVisible) person.setPlateVisible(false);
+      const dir = i % 2 === 0 ? 1 : -1;
+      const rec = {
+        person,
+        x: (i % 2 === 0 ? -1.5 : 1.5) + (i % 3 - 1) * 0.25,
+        z: -HALF_L + 10 + (i / n) * (HALF_L * 2 - 20),
+        dir,
+        speed: 1.35 + (i % 4) * 0.25,
+        yaw: dir > 0 ? Math.PI : 0,
+        phase: i * 1.7,
+      };
+      root.add(person.root);
+      shoppers.push(rec);
+    }
+  }
+  function tickShoppers(dt, timeSec, active) {
+    if (!active) return;
+    if (interiorBuilt) spawnShoppers();
+    if (!shoppers.length) return;
+    const zMin = -HALF_L + 7, zMax = HALF_L - 7;
+    for (const s of shoppers) {
+      s.z += s.dir * s.speed * dt;
+      if (s.z > zMax) { s.z = zMax; s.dir = -1; s.yaw = 0; }
+      if (s.z < zMin) { s.z = zMin; s.dir = 1; s.yaw = Math.PI; }
+      s.phase += s.speed * 2.4 * dt;
+      s.person.applyPose({
+        x: s.x, y: 0.32, z: s.z, yaw: s.yaw,
+        phase: s.phase, mode: 'walk', time: timeSec || 0,
+      });
+    }
   }
 
   // Night sync + changing interior lighting
@@ -784,13 +1006,25 @@ export function createSouq({ scene, groundY, quality }) {
     lightsArmed = true;
     _head = sweepHead(tSec);
     sweepPassColor(_pass, tSec);
-    const idle = 0.1 + (1 - n) * 0.12;
+    const idle = 0.14 + (1 - n) * 0.10;
+    const sideIdle = 0.28 + (1 - n) * 0.10;
     tintSweep(glassIM, lanternAlong, _pass, idle);
     tintSweep(bulbIM, lanternAlong, _pass, idle * 0.85 + 0.15);
     tintSweep(shopLampIM, shopAlong, _pass, idle);
+    tintSweep(sideStripIM, sideStripPos.map((q) => alongZ(q.z)), _pass, sideIdle);
+    tintSweep(sideBulbIM, sideBulbPos.map((q) => alongZ(q.z)), _pass, sideIdle);
+    tintSweep(ribBulbIM, ribBulbPos.map((q) => alongZ(q.z)), _pass, sideIdle * 0.85);
+    tintSweep(sconceIM, sconcePos.map((q) => alongZ(q.z)), _pass, sideIdle);
     glassMat.opacity = 0.35 + n * 0.55;
     shopLampMat.opacity = 0.45 + n * 0.5;
-    shopFillMat.emissive.setHex(0xffe1a0).multiplyScalar(0.05 + n * 0.22);
+    sideStripMat.opacity = 0.35 + n * 0.55;
+    sideBulbMat.opacity = 0.55 + n * 0.4;
+    ribBulbMat.opacity = 0.5 + n * 0.45;
+    sconceMat.opacity = 0.55 + n * 0.4;
+    shopFillMat.emissive.setHex(0xffe1a0).multiplyScalar(0.08 + n * 0.32);
+    sideWashMat.emissive.setHex(0xffe1a0).multiplyScalar(0.10 + n * 0.28);
+    if (cobble.emissive) cobble.emissive.setHex(0xffe0b0).multiplyScalar(0.04 + n * 0.12);
+    else cobble.emissive = new THREE.Color(0xffe0b0).multiplyScalar(0.04 + n * 0.12);
     const hsBase = haloScale * (0.8 + n * 0.55);
     const glowOp = 0.08 + n * 0.78;
     for (let i = 0; i < lanternHalos.length; i++) {
@@ -809,7 +1043,7 @@ export function createSouq({ scene, groundY, quality }) {
       rec.pl.intensity = plBase * (0.06 + 0.94 * k);
     }
     if (!vaultMat.emissive) vaultMat.emissive = new THREE.Color();
-    vaultMat.emissive.setRGB(0.12 * n, 0.07 * n, 0.02 * n);
+    vaultMat.emissive.setRGB(0.16 * n, 0.09 * n, 0.03 * n);
     if (!runnerM.emissive) runnerM.emissive = new THREE.Color();
     runnerM.emissive.setHex(0x3a1010).multiplyScalar(n * 0.22);
   }
@@ -864,7 +1098,7 @@ export function createSouq({ scene, groundY, quality }) {
 
   return {
     root, setNight, views, center: new THREE.Vector3(SOUQ.x, gy, SOUQ.z),
-    kind: 'souq', ensureInterior, buildGoods, glow, tickLights,
+    kind: 'souq', ensureInterior, buildGoods, glow, tickLights, tickShoppers,
     entrance, inside: insidePt, position, y0, slots, isLow,
     bounds: { halfL: HALF_L, streetW: STREET_W, y0 },
   };
@@ -1265,6 +1499,7 @@ function hookNightAndLoop(souq, app) {
       const inside = Math.abs(dx) < 18 && Math.abs(dz) < HALF_L + 6;
       const near = inside || walking || atSouq || (dx * dx + dz * dz) < 140 * 140;
       if (souq.tickLights) souq.tickLights(now * 0.001, near, night);
+      if (souq.tickShoppers) souq.tickShoppers(dt, now * 0.001, near);
       if (inside) souq.ensureInterior(false);
       if (walking || atSouq) window.__interiorCam = true;
       else if (inside && app.camera.position.y < souq.y0 + 6) window.__interiorCam = true;
