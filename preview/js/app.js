@@ -14,6 +14,9 @@ import { initOwner } from './owner.js';
 import { createCrowd } from './crowd.js';
 import { createWedding } from './wedding.js';
 import { createMeteorEvent } from './meteor.js';
+import { detectQuality, setupRenderer, setupSunShadow, followSun, createComposer, makeWaterMaterial, enableShadows } from './gfx.js';
+import { setHouseShadows } from './house.js';
+import { createUniversity, createRestaurant, createStadiumMarker } from './landmarks.js';
 import { loadTerrain, getHeight, buildTerrainMesh, terrainAttribution, LAND_H } from './terrain.js';
 
 const params = new URLSearchParams(location.search);
@@ -79,6 +82,8 @@ let hemiLight, sunLight, fillLight, skyMesh;
 let dayNight = null, lamps = null, crowd = null, birds = null, weather = null, celebrations = null, tour = null, wedding = null, meteor = null, blockLayout = null, blockStreets = null;
 let allResidents = [];
 let selectedResident = null;
+let interiorCam = false, placeIdx = -1;
+let QUALITY = 'mid', QS = null, composer = null, university = null, restaurant = null, stadiumMarker = null;
 let plotTents = []; // full procedural tents + tags for real residents (not the selected hero)
 let crowdTags = [];
 let promoCrowdLabels = false;
@@ -182,7 +187,7 @@ function makeWater(colorA, colorB, size) {
     uColor: { value: new THREE.Color(colorA) },
     uColor2: { value: new THREE.Color(colorB) },
   };
-  const mat = new THREE.ShaderMaterial({
+  const mat = makeWaterMaterial(waterUniforms) || new THREE.ShaderMaterial({
     uniforms: waterUniforms,
     vertexShader: `
       varying vec2 vUv;
@@ -284,6 +289,7 @@ function makeLabelSprite(text, kind) {
 
 function buildMap(data) {
   mapRoot = new THREE.Group();
+  mapRoot.name = 'mapRoot';
   const landMat = new THREE.MeshLambertMaterial({ color: 0xd9c7a6 });
   const hinterMat = new THREE.MeshLambertMaterial({ color: 0xc2b394 });
   const parkMat = new THREE.MeshLambertMaterial({ color: 0x6aa34c });
@@ -715,7 +721,7 @@ function clampFreeCamera() {
   const c = camera.position;
   c.x = Math.max(CAM_BOUNDS.minX - 500, Math.min(CAM_BOUNDS.maxX + 500, c.x));
   c.z = Math.max(CAM_BOUNDS.minZ - 500, Math.min(CAM_BOUNDS.maxZ + 500, c.z));
-  const camMin = (typeof groundY === 'function' ? groundY(c.x, c.z) : 2.6) + 8;
+  const camMin = (typeof groundY === 'function' ? groundY(c.x, c.z) : 2.6) + (interiorCam ? 1.4 : 8);
   if (c.y < camMin) c.y = camMin;
 }
 
@@ -1980,6 +1986,71 @@ function celebrationHouses() {
   return list;
 }
 
+function updateGfx() {
+  const night = (lastSky && lastSky.night) || 0;
+  if (sunLight && controls && camera) {
+    const sp = dayNight && dayNight.getSunPosition ? dayNight.getSunPosition() : sunLight.position;
+    if (waterUniforms && waterUniforms.uSunDir) {
+      waterUniforms.uSunDir.value.copy(sp).normalize();
+      waterUniforms.uSunCol.value.copy(sunLight.color);
+      waterUniforms.uNight.value = night;
+      if (skyMesh) {
+        waterUniforms.uSkyTop.value.copy(skyMesh.material.uniforms.top.value);
+        waterUniforms.uSkyBot.value.copy(skyMesh.material.uniforms.bot.value);
+      }
+      if (scene.fog) {
+        waterUniforms.uFogColor.value.copy(scene.fog.color);
+        waterUniforms.uFogNear.value = scene.fog.near;
+        waterUniforms.uFogFar.value = scene.fog.far;
+      }
+    }
+    sunLight.position.copy(sp);
+    followSun(sunLight, controls.target, camera.position.distanceTo(controls.target), QS);
+  }
+  if (composer) composer.setNight(night);
+  if (blockStreets && blockStreets.setNight) blockStreets.setNight(night);
+  if (university) university.setNight(night);
+  if (restaurant) restaurant.setNight(night);
+}
+
+// Landmark / interior camera views (📍 أماكن button cycles through them).
+function placeList() {
+  const out = [];
+  if (university) {
+    out.push({ name: 'جامعة دولة الأغنياء', v: university.views.day });
+    out.push({ name: 'قاعة المحاضرات', v: university.views.hall, inside: true });
+    out.push({ name: 'مكتبة الجامعة', v: university.views.library, inside: true });
+  }
+  if (restaurant) {
+    out.push({ name: 'مطعم البحر', v: restaurant.views.day });
+    out.push({ name: 'جوّا مطعم البحر', v: restaurant.views.interior, inside: true });
+  }
+  if (wedding && wedding.getCenter) {
+    const c = wedding.getCenter();
+    out.push({ name: 'ساحة الدبكة', v: { pos: new THREE.Vector3(c.x + 46, c.y + 30, c.z + 46), target: c.clone() } });
+  }
+  return out;
+}
+
+function viewPlace(i, instant = false) {
+  const list = placeList();
+  if (!list.length) return null;
+  if (i < 0 || i >= list.length) {
+    interiorCam = false;
+    placeIdx = -1;
+    const ov = overviewCamera();
+    if (instant) { camera.position.copy(ov.pos); controls.target.copy(ov.target); controls.update(); } else flyTo(ov.pos, ov.target, 1.4);
+    return 'الخريطة';
+  }
+  const p = list[i];
+  placeIdx = i;
+  interiorCam = !!p.inside;
+  if (tour && tour.pause) tour.pause();
+  if (instant) { camera.position.copy(p.v.pos); controls.target.copy(p.v.target); controls.update(); } else flyTo(p.v.pos, p.v.target, 1.6);
+  if (foundMsg) { foundMsg.textContent = '📍 ' + p.name; foundMsg.hidden = false; }
+  return p.name;
+}
+
 function renderFrame(timeSec, dt) {
   if (!RECORD && dayNight) {
     const lock = (typeof window !== 'undefined' && window.__lockTod != null) ? window.__lockTod : null;
@@ -1995,6 +2066,7 @@ function renderFrame(timeSec, dt) {
     if (crowd && crowd.setNight) crowd.setNight(lastSky.night);
   }
   if (waterUniforms) waterUniforms.uTime.value = timeSec;
+  updateGfx();
   const meteorOn = !!(meteor && meteor.isActive && meteor.isActive());
   if (!RECORD && weather && !meteorOn) {
     weather.update(dt || 0, timeSec, {
@@ -2027,7 +2099,8 @@ function renderFrame(timeSec, dt) {
   if (meteor) meteor.tick(dt || 0);
   // Update camera matrices, render, THEN project HTML labels (project() needs a current matrixWorld).
   camera.updateMatrixWorld();
-  renderer.render(scene, camera);
+  if (composer) composer.render();
+  else renderer.render(scene, camera);
   updateHouseTagPos();
   if (labelLayer && camera && renderer) {
     const r = renderer.domElement.getBoundingClientRect();
@@ -2046,18 +2119,20 @@ function onResize() {
   camera.aspect = W / H;
   camera.updateProjectionMatrix();
   renderer.setSize(W, H, false);
+  if (composer) composer.setSize(W, H);
 }
 
 function initRenderer() {
   const canvas = document.getElementById('c');
   renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, preserveDrawingBuffer: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, RECORD ? 1 : 1.75));
+  QUALITY = detectQuality();
+  QS = setupRenderer(renderer, QUALITY);
+  setHouseShadows(QS.shadows);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, RECORD ? 1 : QS.pixelRatio));
   renderer.setSize(window.innerWidth, window.innerHeight, false);
   renderer.setClearColor(0x8ec7e8, 1);
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.shadowMap.enabled = false; // light on phones + reliable in swiftshader
   scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0x9ec9e0, 1400, 9000);
+  scene.fog = new THREE.Fog(0x9ec9e0, 1100, 8200);
   camera = new THREE.PerspectiveCamera(VERTICAL ? 58 : 50, window.innerWidth / window.innerHeight, 0.5, 32000);
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = !RECORD;
@@ -2088,6 +2163,8 @@ function initRenderer() {
   sunLight = new THREE.DirectionalLight(0xfff5e6, 1.35);
   sunLight.position.set(600, 900, 800);
   scene.add(sunLight);
+  scene.add(sunLight.target);
+  setupSunShadow(sunLight, QS);
   fillLight = new THREE.DirectionalLight(0xb7d4ea, 0.35);
   fillLight.position.set(-400, 300, -200);
   scene.add(fillLight);
@@ -2102,15 +2179,24 @@ function initRenderer() {
         bot: { value: new THREE.Color(0xeff4e8) },
       },
       vertexShader: 'varying vec3 vP; void main(){ vP=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
-      fragmentShader: 'varying vec3 vP; uniform vec3 top,bot; void main(){ float h=clamp(vP.y/4000.0+0.15,0.0,1.0); gl_FragColor=vec4(mix(bot,top,h),1.0); }',
+      fragmentShader: 'varying vec3 vP; uniform vec3 top,bot; void main(){ float h=clamp(vP.y/4000.0+0.15,0.0,1.0); h=pow(h,0.8); vec3 c=mix(bot,top,h); c+=bot*0.12*exp(-abs(vP.y)/500.0); gl_FragColor=vec4(c,1.0);\n#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}',
     })
   );
   skyMesh = sky;
   scene.add(sky);
   clock = new THREE.Clock();
+  composer = createComposer(renderer, scene, camera, QS);
 }
 
 function bindHUD() {
+  const bp = $('btnPlaces');
+  if (bp) bp.addEventListener('click', () => {
+    const n = placeList().length;
+    const next = placeIdx + 1 >= n ? -1 : placeIdx + 1;
+    viewPlace(next);
+  });
+  const bo = $('btnOverview');
+  if (bo) bo.addEventListener('click', () => { interiorCam = false; placeIdx = -1; });
   badgeEl = $('levelBadge');
   searchInput = $('search');
   levelSlider = $('levelSlider');
@@ -2394,8 +2480,12 @@ async function main() {
     allResidents = built.residents;
     if (DEMO_N <= 1) {
       blockLayout = assignBlockPlots(allResidents, data);
-      blockStreets = createBlockStreets({ scene, groundY, data, layout: blockLayout });
+      blockStreets = createBlockStreets({ scene, groundY, data, layout: blockLayout, quality: QS });
     }
+    university = createUniversity({ scene, groundY, quality: QS });
+    restaurant = createRestaurant({ scene, groundY, quality: QS });
+    stadiumMarker = createStadiumMarker({ scene, groundY });
+    if (QS.shadows && mapRoot) mapRoot.traverse((o) => { if (o.isMesh) o.receiveShadow = true; });
     const first = allResidents[0] || { id: 1, name: 'بيت رقم 1', label: 'بيت رقم 1', seed: 'house_1', level: 1, x: plot.x, z: plot.z, i: 0, anonymous: true };
     currentSeed = first.seed || 'house_1';
     currentLevel = first.level || START_LEVEL;
@@ -2554,6 +2644,11 @@ async function main() {
     weather,
     blockLayout,
     blockStreets,
+    university,
+    restaurant,
+    viewPlace,
+    placeNames: () => placeList().map((p) => p.name),
+    quality: QUALITY,
     setTod: (t) => {
       if (!dayNight) return lastSky;
       lastSky = dayNight.update(0, t);
@@ -2566,6 +2661,7 @@ async function main() {
       if (birds) birds.tick(0, 0.016, lastSky.night);
       if (weather && !(meteor && meteor.isActive && meteor.isActive())) weather.update(0, 0, { hemi: hemiLight, sun: sunLight, fill: fillLight, fog: scene.fog, renderer });
       if (wedding && wedding.setNight) wedding.setNight(lastSky.night);
+      updateGfx();
       return lastSky;
     },
     getFps: () => lastFps,

@@ -2,6 +2,20 @@
 // Progression: tent → hut → house → villa → apartment → tower → glass skyscraper.
 // Per-follower style is a deterministic hash of the username.
 import * as THREE from 'three';
+import { plankTexture } from './gfx.js';
+
+let HOUSE_SHADOWS = false;
+export function setHouseShadows(on) { HOUSE_SHADOWS = !!on; }
+function applyShadowFlags(g) {
+  if (!HOUSE_SHADOWS) return;
+  g.traverse((o) => {
+    if (!o.isMesh) return;
+    const m = o.material;
+    if (m && (m.transparent || m.isMeshBasicMaterial)) return;
+    o.castShadow = true;
+    o.receiveShadow = true;
+  });
+}
 
 export function pointsToLevel(points, levels) {
   let lv = 1;
@@ -109,7 +123,7 @@ function makeMats(palette) {
     tent: L(p.tent),
     tentDark: L(0xb89060),
     tentStripe: L(p.accent),
-    wood: L(p.wood),
+    wood: L(p.wood, { map: plankTexture() }),
     woodDark: L(0x6a4024),
     woodLight: L(0xc4a574),
     door: L(0x5a3318),
@@ -1001,6 +1015,7 @@ export function createHouse(opts = {}) {
   let mats = makeMats(style.palette);
   let level = 1;
   let inner = buildHouseAtLevel(level, mats, style);
+  applyShadowFlags(inner);
   root.add(inner);
 
   function rebuild() {
@@ -1008,6 +1023,7 @@ export function createHouse(opts = {}) {
     disposeInner(inner);
     mats = makeMats(style.palette);
     inner = buildHouseAtLevel(level, mats, style);
+    applyShadowFlags(inner);
     root.add(inner);
   }
 

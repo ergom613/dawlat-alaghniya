@@ -1,13 +1,13 @@
 // Day/night cycle: sun, moon, sky, fog, water, and plot/harbour lamps.
 import * as THREE from 'three';
 
-const DAY_TOP = new THREE.Color(0x7eb7e0);
-const DAY_BOT = new THREE.Color(0xeff4e8);
+const DAY_TOP = new THREE.Color(0x3a82c8);
+const DAY_BOT = new THREE.Color(0xcfe3ef);
 const DUSK_TOP = new THREE.Color(0x2a3a6a);
 const DUSK_BOT = new THREE.Color(0xe8894a);
 const NIGHT_TOP = new THREE.Color(0x0a1020);
 const NIGHT_BOT = new THREE.Color(0x1a2440);
-const DAY_FOG = new THREE.Color(0x9ec9e0);
+const DAY_FOG = new THREE.Color(0xbcd6e6);
 const NIGHT_FOG = new THREE.Color(0x0c1424);
 const DAY_CLEAR = new THREE.Color(0x8ec7e8);
 const NIGHT_CLEAR = new THREE.Color(0x0b1220);
