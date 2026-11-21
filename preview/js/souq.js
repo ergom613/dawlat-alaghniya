@@ -65,7 +65,10 @@ function signTexture(text, { w = 1024, h = 192, bg = '#6b1d1d', size = 96, borde
     g.fillStyle = grd; g.fillText(text, w / 2, h / 2 + 6); tex.needsUpdate = true;
   };
   draw();
-  try { if (document.fonts && document.fonts.load) document.fonts.load(`800 ${size}px Cairo`, text).then(draw).catch(() => {}); } catch { /* */ }
+  try {
+    if (document.fonts && document.fonts.load) document.fonts.load(`800 ${size}px Cairo`, text).then(draw).catch(() => {});
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw).catch(() => {});
+  } catch { /* */ }
   return tex;
 }
 
@@ -402,14 +405,20 @@ export function createSouq({ scene, groundY, quality }) {
     warmMats.push({ m: mat, day: 0xe6dccb, night: 0xffffff });
     // Larger, slightly lower, closer to the arch so the name is readable from the nave.
     const back = new THREE.Mesh(
-      new THREE.BoxGeometry(3.15, 0.7, 0.06),
-      B(0x3a0c0c, { color: 0x3a0c0c }),
+      new THREE.BoxGeometry(3.15, 0.7, 0.08),
+      B(0x3a0c0c),
     );
-    back.position.set(shopFrontX(s.side) - s.side * 0.32, 3.18, s.z);
+    back.position.set(shopFrontX(s.side) - s.side * 0.22, 3.18, s.z);
     back.rotation.y = s.ry;
+    // Opaque + DoubleSide, and sit clearly in front of the backing so the
+    // gold Arabic name doesn't z-fight away at night.
+    mat.transparent = false;
+    mat.side = THREE.DoubleSide;
+    mat.depthWrite = true;
     const pl = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 0.62), mat);
-    pl.position.set(shopFrontX(s.side) - s.side * 0.36, 3.18, s.z);
+    pl.position.set(shopFrontX(s.side) - s.side * 0.40, 3.18, s.z);
     pl.rotation.y = s.ry;
+    pl.renderOrder = 2;
     signGroup.add(back);
     signGroup.add(pl);
   }
