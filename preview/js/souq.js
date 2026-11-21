@@ -1,8 +1,9 @@
 // سوق دولة الأغنياء — long covered Hamidiyeh-style souq on the reserved
 // inland plot west of the dabke plaza (preview only). Procedural geometry,
 // InstancedMesh shop repeats, interiors built lazily on first enter.
-// Interior lighting: hanging فوانيس cycle gold/amber/red/green/blue slowly;
-// shop-front glow + a few point lights (animated only when the camera is near).
+// Interior lighting: one sweep of the hanging فوانيس from one end of the
+// nave to the other (color may change each pass); shop lamps + a few point
+// lights follow the same band. Animated only when the camera is near.
 //
 // Public hooks (no edits to app.js required):
 //   window.cityPlaces.souq = { position, entrance, inside }
@@ -203,7 +204,7 @@ const WALL_H = 5.5;
 const VAULT_R = STREET_W / 2 + 0.15; // ~4.45
 const EAST = STREET_W / 2;  // shop fronts at ±EAST
 
-// Changing lantern hues — slow, smooth cycle (ذهب / عنبر / أحمر / أخضر / أزرق).
+// One traveling sweep along the nave (ذهب / عنبر / أحمر / أخضر / أزرق, one color per pass).
 const LIGHT_PALETTE = [
   new THREE.Color(0xffd56a),
   new THREE.Color(0xff9a32),
@@ -211,16 +212,23 @@ const LIGHT_PALETTE = [
   new THREE.Color(0x3ecf7a),
   new THREE.Color(0x4a8dff),
 ];
-const LIGHT_PERIOD = 22;
-function cycleHue(out, tSec, phase) {
-  const u = ((tSec / LIGHT_PERIOD) + (phase || 0)) % 1;
-  const n = LIGHT_PALETTE.length;
-  const x = u * n;
-  const i = Math.floor(x) % n;
-  const f = x - Math.floor(x);
-  const s = f * f * (3 - 2 * f);
-  out.copy(LIGHT_PALETTE[i]).lerp(LIGHT_PALETTE[(i + 1) % n], s);
+const LIGHT_PERIOD = 7; // seconds for one end-to-end pass
+const LIGHT_WIDTH = 0.14; // band width in 0..1 along the nave
+function sweepHead(tSec) {
+  const u = ((tSec / LIGHT_PERIOD) % 1 + 1) % 1;
+  // Enter from just before the start, exit just after the end (no mid-pass wrap).
+  return u * (1 + 2 * LIGHT_WIDTH) - LIGHT_WIDTH;
+}
+function sweepPassColor(out, tSec) {
+  const pass = Math.floor((tSec / LIGHT_PERIOD) + 1e-9);
+  out.copy(LIGHT_PALETTE[((pass % LIGHT_PALETTE.length) + LIGHT_PALETTE.length) % LIGHT_PALETTE.length]);
   return out;
+}
+function sweepFalloff(along, head, width) {
+  const x = Math.abs(along - head) / (width || LIGHT_WIDTH);
+  if (x >= 1) return 0;
+  const t = 1 - x;
+  return t * t * (3 - 2 * t);
 }
 
 function shopSlots() {
@@ -541,10 +549,11 @@ export function createSouq({ scene, groundY, quality }) {
     })),
     lanterns,
   );
-  instanced(
+  const innerBulbMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const bulbIM = instanced(
     new THREE.SphereGeometry(0.11, 8, 6),
-    new THREE.MeshBasicMaterial({ color: 0xfff6d8 }),
-    lanternPos.map((z) => ({ x: 0, y: lanternY, z })),
+    innerBulbMat,
+    lanternPos.map((z) => ({ x: 0, y: lanternY, z, color: new THREE.Color(0xfff6d8) })),
     lanterns,
   );
   const lanternHalos = [];
@@ -728,7 +737,6 @@ export function createSouq({ scene, groundY, quality }) {
   let lastNight = 0;
   let nightFactor = 0;
   let lightsArmed = true;
-  const _hue = new THREE.Color();
   function setNight(n) {
     n = Math.max(0, Math.min(1, n || 0));
     nightFactor = n;
@@ -744,16 +752,25 @@ export function createSouq({ scene, groundY, quality }) {
       }
     }
   }
-  const _warmGold = new THREE.Color(0xffc56a);
-  function tintIM(mesh, count, tSec, phaseStep, phase0, warmMix) {
+  const zFirst = lanternPos[0], zLast = lanternPos[lanternPos.length - 1];
+  const zSpan = (zLast - zFirst) || 1;
+  // along=0 at the south portal (+Z, near the usual inside camera), along=1 at the north (−Z).
+  const alongZ = (z) => (zLast - z) / zSpan;
+  const _pass = new THREE.Color();
+  const _dim = new THREE.Color();
+  function tintSweep(mesh, alongs, color, idle) {
     if (!mesh || !mesh.instanceColor) return;
-    for (let i = 0; i < count; i++) {
-      cycleHue(_hue, tSec, (phase0 || 0) + i * phaseStep);
-      if (warmMix) _hue.lerp(_warmGold, warmMix);
-      mesh.setColorAt(i, _hue);
+    for (let i = 0; i < alongs.length; i++) {
+      const k = sweepFalloff(alongs[i], _head, LIGHT_WIDTH);
+      const b = idle + (1 - idle) * k;
+      _dim.copy(color).multiplyScalar(b);
+      mesh.setColorAt(i, _dim);
     }
     mesh.instanceColor.needsUpdate = true;
   }
+  const lanternAlong = lanternPos.map(alongZ);
+  const shopAlong = slots.map((s) => alongZ(s.z));
+  let _head = 0;
   function tickLights(tSec, near, night) {
     if (typeof window.__souqLightT === 'number') tSec = window.__souqLightT;
     const n = (night != null ? night : nightFactor) || 0;
@@ -765,26 +782,31 @@ export function createSouq({ scene, groundY, quality }) {
       return;
     }
     lightsArmed = true;
-    tintIM(glassIM, lanternPos.length, tSec, 1 / Math.max(1, lanternPos.length), 0);
-    tintIM(shopLampIM, slots.length, tSec, 0.17, 0.22, 0.15);
-    const glowOp = 0.12 + n * 0.7;
-    glassMat.opacity = 0.4 + n * 0.5;
-    shopLampMat.opacity = 0.5 + n * 0.45;
+    _head = sweepHead(tSec);
+    sweepPassColor(_pass, tSec);
+    const idle = 0.1 + (1 - n) * 0.12;
+    tintSweep(glassIM, lanternAlong, _pass, idle);
+    tintSweep(bulbIM, lanternAlong, _pass, idle * 0.85 + 0.15);
+    tintSweep(shopLampIM, shopAlong, _pass, idle);
+    glassMat.opacity = 0.35 + n * 0.55;
+    shopLampMat.opacity = 0.45 + n * 0.5;
     shopFillMat.emissive.setHex(0xffe1a0).multiplyScalar(0.05 + n * 0.22);
-    const hs = haloScale * (0.8 + n * 0.55);
-    for (const rec of lanternHalos) {
-      cycleHue(_hue, tSec, rec.phase);
-      rec.mat.color.copy(_hue);
-      rec.mat.opacity = glowOp;
+    const hsBase = haloScale * (0.8 + n * 0.55);
+    const glowOp = 0.08 + n * 0.78;
+    for (let i = 0; i < lanternHalos.length; i++) {
+      const rec = lanternHalos[i];
+      const k = sweepFalloff(lanternAlong[i], _head, LIGHT_WIDTH);
+      rec.mat.color.copy(_pass);
+      rec.mat.opacity = glowOp * (0.08 + 0.92 * k);
+      const hs = hsBase * (0.45 + 0.85 * k);
       rec.halo.scale.set(hs, hs, 1);
     }
-    // Point lights color the inner vault and shop fronts; keep the vault
-    // material itself a warm stone (DoubleSide — emissive would also light the roof outside).
-    const plBase = 0.45 + n * 2.05;
+    // Point lights ride the same band; vault stays warm stone (DoubleSide).
+    const plBase = 0.35 + n * 2.15;
     for (const rec of pointLights) {
-      cycleHue(_hue, tSec, rec.phase);
-      rec.pl.color.copy(_hue);
-      rec.pl.intensity = plBase * (0.88 + 0.12 * Math.sin((tSec / LIGHT_PERIOD) * Math.PI * 2 + rec.phase * 6.28));
+      const k = sweepFalloff(alongZ(rec.pl.position.z), _head, LIGHT_WIDTH);
+      rec.pl.color.copy(_pass);
+      rec.pl.intensity = plBase * (0.06 + 0.94 * k);
     }
     if (!vaultMat.emissive) vaultMat.emissive = new THREE.Color();
     vaultMat.emissive.setRGB(0.12 * n, 0.07 * n, 0.02 * n);
