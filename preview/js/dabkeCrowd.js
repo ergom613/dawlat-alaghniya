@@ -1,7 +1,7 @@
-// ~300 instanced dabke dancers + crowd. Arms hang down 30–45° from vertical,
-// hands meet the neighbor at hip height. Never a T-pose.
-import * as THREE from 'three';
-import { PERF } from './gfx.js';
+// ~300 instanced dabke dancers + standing crowd, using the 4 approved
+// character types (thobe, hijab, hoodie, child). Arms hang down 30–45°
+// from vertical so hands meet the neighbour at hip height. Never a T-pose.
+import { createPeoplePool, paletteFor, qualityTier } from './people.js';
 
 export const DANCE_RINGS = [
   { r: 6.6, n: 54, speed: 0.16, dir: 1 },
@@ -10,168 +10,96 @@ export const DANCE_RINGS = [
 ];
 export const CROWD_N = 68; // 54+78+100+68 = 300
 
-const SKINS = [0xd4a574, 0xc68642, 0xe0ac7e, 0xb07a4a, 0xe8c4a0, 0xc4a07a];
-const CLOTHES = [0x8b1e1e, 0xc9a227, 0x1f6b4a, 0xf2efe6, 0x3b2a1a, 0xb43c6e, 0x2c4c8c, 0xd8b15a, 0x6b1d3a, 0xeee3c8, 0x4a6b3a, 0x8c3a2c];
-const HAIR = [0x2a2018, 0x1a1410, 0x3a2a20, 0x4a3020];
-const ARM_DOWN = 38 * Math.PI / 180;
+function scaledRings() {
+  const q = qualityTier();
+  const k = q === 'low' ? 0.38 : (q === 'high' ? 1 : 0.78);
+  return {
+    k,
+    rings: DANCE_RINGS.map((rg) => ({ ...rg, n: Math.max(8, Math.round(rg.n * k)) })),
+    crowdN: Math.max(8, Math.round(CROWD_N * k)),
+  };
+}
+
+function pickDanceType(i, kind) {
+  // Children stand in the outer ring / crowd, not the inner dabke line.
+  if (kind === 'crowd') {
+    const bag = ['thobe', 'hijab', 'hoodie', 'child', 'hijab', 'thobe', 'hoodie', 'child'];
+    return bag[i % bag.length];
+  }
+  const bag = ['thobe', 'hijab', 'hoodie', 'thobe', 'hijab', 'hoodie', 'thobe', 'hijab'];
+  return bag[i % bag.length];
+}
 
 export function createDabkeCrowd(plazaX, plazaZ) {
+  const { rings, crowdN } = scaledRings();
   const people = [];
   let idx = 0;
-  for (const ring of DANCE_RINGS) {
+  for (const ring of rings) {
     for (let i = 0; i < ring.n; i++) {
+      const typ = pickDanceType(idx, 'dance');
       people.push({
-        kind: 'dance',
-        ringR: ring.r,
-        base: (i / ring.n) * Math.PI * 2,
-        speed: ring.speed,
-        dir: ring.dir,
-        phase: i * 0.37 + ring.r,
-        skirt: i % 2 === 0,
-        skin: SKINS[idx % SKINS.length],
-        cloth: CLOTHES[idx % CLOTHES.length],
-        hair: HAIR[idx % HAIR.length],
+        kind: 'dance', typ,
+        ringR: ring.r, base: (i / ring.n) * Math.PI * 2,
+        speed: ring.speed, dir: ring.dir,
+        phase: i * 0.37 + ring.r, slot: 0,
       });
       idx++;
     }
   }
-  for (let i = 0; i < CROWD_N; i++) {
-    const a = (i / CROWD_N) * Math.PI * 2 + 0.11;
+  for (let i = 0; i < crowdN; i++) {
+    const a = (i / crowdN) * Math.PI * 2 + 0.11;
     const r = 17.4 + (i % 5) * 0.85 + (i % 3) * 0.25;
+    const typ = pickDanceType(idx, 'crowd');
     people.push({
-      kind: 'crowd',
-      ringR: r,
-      base: a,
-      speed: 0,
-      dir: 1,
-      phase: i * 0.53,
-      skirt: i % 3 !== 1,
-      skin: SKINS[idx % SKINS.length],
-      cloth: CLOTHES[idx % CLOTHES.length],
-      hair: HAIR[idx % HAIR.length],
+      kind: 'crowd', typ,
+      ringR: r, base: a, speed: 0, dir: 1,
+      phase: i * 0.53, slot: 0,
     });
     idx++;
   }
-  const N = people.length;
 
-  const armG = new THREE.BoxGeometry(0.11, 0.48, 0.11);
-  armG.translate(0, -0.24, 0);
-  const legG = new THREE.BoxGeometry(0.13, 0.52, 0.15);
-  legG.translate(0, -0.26, 0);
-  const handG = new THREE.SphereGeometry(0.075, 5, 4);
-
-  const geos = {
-    head: new THREE.SphereGeometry(0.20, 7, 5),
-    hair: new THREE.SphereGeometry(0.21, 7, 5, 0, Math.PI * 2, 0, Math.PI * 0.55),
-    torso: new THREE.BoxGeometry(0.42, 0.58, 0.26),
-    skirt: new THREE.CylinderGeometry(0.28, 0.34, 0.46, 7),
-    legL: legG,
-    legR: legG.clone(),
-    armL: armG,
-    armR: armG.clone(),
-    handL: handG,
-    handR: handG.clone(),
-  };
-
-  const meshes = {};
-  const group = new THREE.Group();
+  const counts = { thobe: 0, hijab: 0, hoodie: 0, child: 0 };
+  for (const p of people) counts[p.typ]++;
+  const cursors = { thobe: 0, hijab: 0, hoodie: 0, child: 0 };
+  const pool = createPeoplePool({ counts, name: 'dabkeCrowd' });
+  for (const p of people) {
+    const slot = cursors[p.typ]++;
+    p.slot = slot;
+    pool.setSeed(p.typ, slot, 'dabke-' + p.typ + slot, paletteFor(p.typ, 'dabke-' + p.typ + slot));
+  }
+  pool.finishColors();
+  const group = pool.group;
   group.name = 'dabkeCrowd';
-  for (const [name, geo] of Object.entries(geos)) {
-    const mat = new THREE.MeshLambertMaterial({ color: 0xffffff });
-    const mesh = new THREE.InstancedMesh(geo, mat, N);
-    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    mesh.frustumCulled = false;
-    mesh.castShadow = false;
-    meshes[name] = mesh;
-    group.add(mesh);
-  }
-  const dummy = new THREE.Object3D();
-  const col = new THREE.Color();
-  for (let i = 0; i < N; i++) {
-    const p = people[i];
-    col.setHex(p.skin);
-    meshes.head.setColorAt(i, col);
-    meshes.armL.setColorAt(i, col);
-    meshes.armR.setColorAt(i, col);
-    meshes.handL.setColorAt(i, col);
-    meshes.handR.setColorAt(i, col);
-    col.setHex(p.hair);
-    meshes.hair.setColorAt(i, col);
-    col.setHex(p.cloth);
-    meshes.torso.setColorAt(i, col);
-    meshes.skirt.setColorAt(i, col);
-    meshes.legL.setColorAt(i, col);
-    meshes.legR.setColorAt(i, col);
-  }
-  for (const m of Object.values(meshes)) {
-    if (m.instanceColor) m.instanceColor.needsUpdate = true;
-  }
-
-  function placePart(mesh, i, x, y, z, yaw, px, py, pz, rx, ry, rz, sx = 1, sy = 1, sz = 1) {
-    dummy.position.set(x, y, z);
-    dummy.rotation.set(0, yaw, 0);
-    dummy.scale.set(1, 1, 1);
-    dummy.updateMatrix();
-    const base = dummy.matrix.clone();
-    dummy.position.set(px, py, pz);
-    dummy.rotation.set(rx, ry, rz);
-    dummy.scale.set(sx, sy, sz);
-    dummy.updateMatrix();
-    dummy.matrix.premultiply(base);
-    mesh.setMatrixAt(i, dummy.matrix);
-  }
 
   let frame = 0;
+  let lastLod = -1;
   function update(dt, t, camera) {
     const time = t != null ? t : performance.now() / 1000;
     frame++;
     let lod = 0;
+    let onScreen = true;
     if (camera) {
       const d = Math.hypot(camera.position.x - plazaX, camera.position.z - plazaZ, camera.position.y - 4);
-      if (d > 200) lod = 2;
+      if (d > 420) { /* freeze far away */ if (frame % 8 !== 1 && lastLod === 3) return; lod = 3; onScreen = d < 700; }
+      else if (d > 200) lod = 2;
       else if (d > 110) lod = 1;
     }
-    // far away (or the whole city view on phones) the dancers are sub-pixel: skip them
-    const hideD = PERF.mobile ? 420 : 900;
-    if (camera) {
-      const d = Math.hypot(camera.position.x - plazaX, camera.position.z - plazaZ, camera.position.y - 4);
-      const far = d > hideD;
-      if (group.visible === far) group.visible = !far;
-      if (far) return;
-    }
-    if (lod === 2 && frame % 3 !== 0) return;
-    if (lod === 1 && PERF.mobile && frame % 2 !== 0) return;
-    const skipLegs = lod >= 1;
-    for (let i = 0; i < N; i++) {
-      const p = people[i];
+    if (lod >= 2 && frame % (lod === 3 ? 6 : 3) !== 0 && lastLod === lod) return;
+    lastLod = lod;
+    if (!onScreen) return;
+    const dirty = new Set();
+    for (const p of people) {
       const dance = p.kind === 'dance';
       const a = p.base + (dance ? time * p.speed * p.dir : 0);
       const x = Math.cos(a) * p.ringR;
       const z = Math.sin(a) * p.ringR;
-      const beat = time * 2.13 + p.phase;
-      const bob = dance ? Math.abs(Math.sin(beat)) * 0.07 : Math.sin(time * 1.1 + p.phase) * 0.02;
-      // Face the center; local ±X follows the circle so lowered arms reach the neighbors.
       const yaw = -a - Math.PI / 2 + (dance ? p.dir * 0.10 : 0);
-      const kick = dance ? Math.sin(beat) : 0;
-      const legLX = skipLegs ? 0 : (dance ? Math.max(0, kick) * 0.45 : 0.05);
-      const legRX = skipLegs ? 0 : (dance ? Math.max(0, -kick) * 0.35 : 0.04);
-      const drop = dance ? ARM_DOWN : ARM_DOWN * 0.45;
-      placePart(meshes.head, i, x, bob, z, yaw, 0, 1.42, 0, 0, 0, 0);
-      placePart(meshes.hair, i, x, bob, z, yaw, 0, 1.50, 0, 0, 0, 0);
-      placePart(meshes.torso, i, x, bob, z, yaw, 0, 1.04, 0, 0, 0, 0);
-      if (p.skirt) placePart(meshes.skirt, i, x, bob, z, yaw, 0, 0.58, 0, 0, 0, 0);
-      else placePart(meshes.skirt, i, x, bob, z, yaw, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-      placePart(meshes.legL, i, x, bob, z, yaw, -0.11, 0.54, 0, legLX, 0, 0);
-      placePart(meshes.legR, i, x, bob, z, yaw, 0.11, 0.54, 0, legRX, 0, 0);
-      placePart(meshes.armL, i, x, bob, z, yaw, -0.23, 1.22, 0, 0.12, 0, -drop);
-      placePart(meshes.armR, i, x, bob, z, yaw, 0.23, 1.22, 0, 0.12, 0, drop);
-      const handY = 1.22 - Math.cos(drop) * 0.48;
-      const handX = Math.sin(drop) * 0.48;
-      placePart(meshes.handL, i, x, bob, z, yaw, -0.22 - handX, handY, 0.08, 0, 0, 0);
-      placePart(meshes.handR, i, x, bob, z, yaw, 0.22 + handX, handY, 0.08, 0, 0, 0);
+      const beat = time * 2.13 + p.phase;
+      pool.place(p.typ, p.slot, x, 0, z, yaw, dance ? 'dabke' : 'idle', beat, lod, time);
+      dirty.add(p.typ);
     }
-    for (const m of Object.values(meshes)) m.instanceMatrix.needsUpdate = true;
+    for (const typ of dirty) pool.commit(typ);
   }
 
-  return { group, update, count: N };
+  return { group, update, count: people.length, pool };
 }

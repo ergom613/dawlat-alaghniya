@@ -1,15 +1,15 @@
 // Preview-only compact neighbourhood: houses next to each other in 6×2-lot
 // blocks, narrow streets, a civic square around house #1, and access roads to
-// the university and the dabke plaza. Display layout only — residents.json is
+// the mosque, the dabke plaza, the restaurant and the souq. Display layout only — residents.json is
 // not rewritten (the live site keeps its stored x/z). House #1 stays at (160, 65).
 import * as THREE from 'three';
 import { isDryAt } from './plots.js';
 import {
   HOME, LOT, COLS, ROWS, STREET, BLOCK_W, BLOCK_D, PITCH_X, PITCH_Z, CIVIC,
-  UNIVERSITY, DABKE, RESTAURANT, blockOrigin, isCivic, compactLayout, nextCompactLot,
+  UNIVERSITY, DABKE, RESTAURANT, SOUQ, blockOrigin, isCivic, compactLayout, nextCompactLot,
 } from './layout.js';
 
-export { HOME, LOT, STREET, UNIVERSITY, DABKE, RESTAURANT, nextCompactLot };
+export { HOME, LOT, STREET, UNIVERSITY, DABKE, RESTAURANT, SOUQ, nextCompactLot };
 export const STREET_W = STREET;
 export const PLAZA = { x: DABKE.x, z: DABKE.z, r: DABKE.size * 0.72 };
 
@@ -115,6 +115,7 @@ export function clearRects(layout) {
   rects.push({ x: UNIVERSITY.x, z: UNIVERSITY.z, w: UNIVERSITY.w + 6, d: UNIVERSITY.d + 6 });
   rects.push({ x: DABKE.x, z: DABKE.z, w: DABKE.size + 6, d: DABKE.size + 6 });
   rects.push({ x: RESTAURANT.x, z: RESTAURANT.z, w: RESTAURANT.w + 4, d: RESTAURANT.d + 4 });
+  rects.push({ x: SOUQ.x, z: SOUQ.z, w: SOUQ.w + 6, d: SOUQ.d + 6 });
   return rects;
 }
 
@@ -155,6 +156,74 @@ function hideOsmRoadsIn(scene, rects) {
   });
 }
 
+
+function nk(x, z) { return x.toFixed(1) + ',' + z.toFixed(1); }
+
+// Paint a continuous road network: shortened segments + intersection pads so
+// boxes no longer overlap, plus sidewalks and dashed centre lines.
+function paintNetwork(root, groundY, segs, ROAD, WALK, mats) {
+  const nodes = new Map();
+  const addN = (x, z) => { const k = nk(x, z); if (!nodes.has(k)) nodes.set(k, { x, z }); };
+  const clean = [];
+  const seen = new Set();
+  for (const s of segs) {
+    const a = nk(s.x1, s.z1) + '>' + nk(s.x2, s.z2);
+    const b = nk(s.x2, s.z2) + '>' + nk(s.x1, s.z1);
+    if (seen.has(a) || seen.has(b)) continue;
+    const len = Math.hypot(s.x2 - s.x1, s.z2 - s.z1);
+    if (len < 0.6) continue;
+    seen.add(a);
+    const ew = s.kind ? s.kind === 'ew' : Math.abs(s.x2 - s.x1) >= Math.abs(s.z2 - s.z1);
+    clean.push({ x1: s.x1, z1: s.z1, x2: s.x2, z2: s.z2, kind: ew ? 'ew' : 'ns', len });
+    addN(s.x1, s.z1); addN(s.x2, s.z2);
+  }
+  const inset = ROAD * 0.5;
+  for (const s of clean) {
+    const dx = s.x2 - s.x1, dz = s.z2 - s.z1;
+    const inv = 1 / s.len;
+    const ux = dx * inv, uz = dz * inv;
+    const ix1 = s.x1 + ux * inset, iz1 = s.z1 + uz * inset;
+    const ix2 = s.x2 - ux * inset, iz2 = s.z2 - uz * inset;
+    const slen = Math.hypot(ix2 - ix1, iz2 - iz1);
+    if (slen < 0.2) continue;
+    const cx = (ix1 + ix2) / 2, cz = (iz1 + iz2) / 2;
+    const ew = s.kind === 'ew';
+    root.add(drapeStrip(groundY, cx, cz, ew ? slen : ROAD, ew ? ROAD : slen, 0.12, mats.road));
+    const off = ROAD / 2 + WALK / 2;
+    if (ew) {
+      root.add(drapeStrip(groundY, cx, cz - off, slen, WALK, 0.16, mats.walk));
+      root.add(drapeStrip(groundY, cx, cz + off, slen, WALK, 0.16, mats.walk));
+    } else {
+      root.add(drapeStrip(groundY, cx - off, cz, WALK, slen, 0.16, mats.walk));
+      root.add(drapeStrip(groundY, cx + off, cz, WALK, slen, 0.16, mats.walk));
+    }
+    // dashed centre line
+    const dash = 2.2, gap = 1.6, period = dash + gap;
+    const n = Math.max(0, Math.floor((slen - 0.8) / period));
+    for (let i = 0; i < n; i++) {
+      const t = (i + 0.5) * period / slen;
+      const lx = ix1 + (ix2 - ix1) * t, lz = iz1 + (iz2 - iz1) * t;
+      root.add(drapeStrip(groundY, lx, lz, ew ? dash : 0.22, ew ? 0.22 : dash, 0.15, mats.line));
+    }
+  }
+  for (const n of nodes.values()) {
+    root.add(drapeStrip(groundY, n.x, n.z, ROAD, ROAD, 0.12, mats.road));
+  }
+  return clean;
+}
+
+function linkL(access, a, b) {
+  const len = Math.hypot(b.x - a.x, b.z - a.z);
+  if (len < 1) return;
+  const mid = Math.abs(b.z - a.z) > Math.abs(b.x - a.x) ? { x: b.x, z: a.z } : { x: a.x, z: b.z };
+  for (const [p, q] of [[a, mid], [mid, b]]) {
+    const L = Math.hypot(q.x - p.x, q.z - p.z);
+    if (L < 1) continue;
+    const ew = Math.abs(q.x - p.x) > Math.abs(q.z - p.z);
+    access.push({ x1: p.x, z1: p.z, x2: q.x, z2: q.z, kind: ew ? 'ew' : 'ns' });
+  }
+}
+
 export function createBlockStreets({ scene, groundY, data, layout, quality }) {
   const root = new THREE.Group();
   root.name = 'blockStreets';
@@ -169,23 +238,32 @@ export function createBlockStreets({ scene, groundY, data, layout, quality }) {
   const segs = streetPlan(layout, data);
   const ROAD = 5.4;
   const WALK = (STREET - ROAD) / 2;
+  const mats = { road: roadMat, walk: walkMat, line: lineMat };
 
-  for (const s of segs) {
-    const cx = (s.x1 + s.x2) / 2;
-    const cz = (s.z1 + s.z2) / 2;
-    const len = Math.hypot(s.x2 - s.x1, s.z2 - s.z1);
-    const ew = s.kind === 'ew';
-    root.add(drapeStrip(groundY, cx, cz, ew ? len : ROAD, ew ? ROAD : len, 0.12, roadMat));
-    const off = ROAD / 2 + WALK / 2;
-    if (ew) {
-      root.add(drapeStrip(groundY, cx, cz - off, len, WALK, 0.16, walkMat));
-      root.add(drapeStrip(groundY, cx, cz + off, len, WALK, 0.16, walkMat));
-    } else {
-      root.add(drapeStrip(groundY, cx - off, cz, WALK, len, 0.16, walkMat));
-      root.add(drapeStrip(groundY, cx + off, cz, WALK, len, 0.16, walkMat));
+  // Access roads: nearest street corner → mosque / wedding / restaurant / souq.
+  const cs = corners(layout);
+  const access = [];
+  const targets = [
+    { x: UNIVERSITY.x, z: UNIVERSITY.z + UNIVERSITY.d / 2 + 1 },
+    { x: DABKE.x + DABKE.size / 2 + 1, z: DABKE.z },
+    { x: RESTAURANT.x - RESTAURANT.w / 2 - 1, z: RESTAURANT.z },
+    { x: SOUQ.x + SOUQ.w / 2 + 1, z: SOUQ.z },
+  ];
+  for (const t of targets) {
+    let best = null, bd = Infinity;
+    for (const [x, z] of cs) {
+      const d = (x - t.x) ** 2 + (z - t.z) ** 2;
+      if (d < bd) { bd = d; best = { x, z }; }
     }
-    root.add(drapeStrip(groundY, cx, cz, ew ? len * 0.9 : 0.22, ew ? 0.22 : len * 0.9, 0.14, lineMat));
+    if (best) linkL(access, best, t);
   }
+  // Straight west corridor: wedding plaza → souq (same z).
+  linkL(access,
+    { x: DABKE.x - DABKE.size / 2 - 1, z: DABKE.z },
+    { x: SOUQ.x + SOUQ.w / 2 + 1, z: SOUQ.z },
+  );
+
+  paintNetwork(root, groundY, [...segs, ...access], ROAD, WALK, mats);
 
   // Tidy yard pad under every block + a thin hedge line between the two rows.
   for (const key of layout.cells) {
@@ -209,35 +287,30 @@ export function createBlockStreets({ scene, groundY, data, layout, quality }) {
     [c0.x + 0.3, sqZ, 0.6, sqD], [c0.x + sqW - 0.3, sqZ, 0.6, sqD],
   ]) root.add(drapeStrip(groundY, x, z, sx, sz, 0.18, curbMat));
 
-  // Access roads: nearest street corner → university gate and dabke plaza edge.
-  const cs = corners(layout);
-  const targets = [
-    { x: UNIVERSITY.x, z: UNIVERSITY.z + UNIVERSITY.d / 2 + 1 },
-    { x: DABKE.x + DABKE.size / 2 + 1, z: DABKE.z },
-    { x: RESTAURANT.x - RESTAURANT.w / 2 - 1, z: RESTAURANT.z },
-  ];
-  const access = [];
-  for (const t of targets) {
-    let best = null, bd = Infinity;
-    for (const [x, z] of cs) {
-      const d = (x - t.x) ** 2 + (z - t.z) ** 2;
-      if (d < bd) { bd = d; best = [x, z]; }
-    }
-    if (!best) continue;
-    // L-shaped: along x first, then z — keeps it on the grid look.
-    const a = { x: best[0], z: best[1] };
-    const mid = Math.abs(t.z - a.z) > Math.abs(t.x - a.x) ? { x: t.x, z: a.z } : { x: a.x, z: t.z };
-    for (const [p, q] of [[a, mid], [mid, t]]) {
-      const len = Math.hypot(q.x - p.x, q.z - p.z);
-      if (len < 1) continue;
-      const ew = Math.abs(q.x - p.x) > Math.abs(q.z - p.z);
-      const cx = (p.x + q.x) / 2, cz = (p.z + q.z) / 2;
-      const L = len + ROAD;
-      root.add(drapeStrip(groundY, cx, cz, ew ? L : ROAD, ew ? ROAD : L, 0.12, roadMat));
-      root.add(drapeStrip(groundY, cx, cz, ew ? L * 0.9 : 0.22, ew ? 0.22 : L * 0.9, 0.14, lineMat));
-      access.push({ x1: p.x, z1: p.z, x2: q.x, z2: q.z, kind: ew ? 'ew' : 'ns' });
-    }
+  // Simple souq lot (a long paved street; stalls may be filled in later).
+  root.add(drapeStrip(groundY, SOUQ.x, SOUQ.z, SOUQ.w, SOUQ.d, 0.11, plazaMat));
+  root.add(drapeStrip(groundY, SOUQ.x, SOUQ.z, 6.4, SOUQ.d - 4, 0.13, walkMat));
+  for (const side of [-1, 1]) {
+    root.add(drapeStrip(groundY, SOUQ.x + side * 10, SOUQ.z, 8.5, SOUQ.d - 6, 0.17, yardMat));
   }
+  {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512; canvas.height = 160;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#1d3a40'; ctx.fillRect(0, 0, 512, 160);
+    ctx.strokeStyle = '#d9a92a'; ctx.lineWidth = 8; ctx.strokeRect(8, 8, 496, 144);
+    ctx.fillStyle = '#f4e7b5';
+    ctx.font = '700 72px Cairo, "Noto Naskh Arabic", Tahoma, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('السوق', 256, 84);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(10, 3.1), new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }));
+    sign.position.set(SOUQ.x + SOUQ.w / 2 + 0.2, groundY(SOUQ.x, SOUQ.z) + 4.2, SOUQ.z);
+    sign.rotation.y = -Math.PI / 2;
+    root.add(sign);
+  }
+
 
   // Street lamps along the streets (light-weight for mobile)
   const lampGroup = new THREE.Group();
