@@ -778,7 +778,7 @@ function clampFreeCamera() {
   const c = camera.position;
   c.x = Math.max(CAM_BOUNDS.minX - 500, Math.min(CAM_BOUNDS.maxX + 500, c.x));
   c.z = Math.max(CAM_BOUNDS.minZ - 500, Math.min(CAM_BOUNDS.maxZ + 500, c.z));
-  const camMin = (typeof groundY === 'function' ? groundY(c.x, c.z) : 2.6) + (interiorCam ? 1.4 : 8);
+  const camMin = (typeof groundY === 'function' ? groundY(c.x, c.z) : 2.6) + (interiorCam || window.__interiorCam ? 1.4 : 8);
   if (c.y < camMin) c.y = camMin;
 }
 
@@ -3133,7 +3133,9 @@ async function main() {
   };
 
   if (RECORD) {
-    const hideIds = ['levels', 'searchForm', 'stats', 'foundMsg', 'brand', 'top', 'hud', 'followStrip', 'followPop', 'houseCard', 'shareToast'];
+    document.body.classList.add('recording');
+    const hideIds = ['levels', 'searchForm', 'stats', 'foundMsg', 'brand', 'top', 'hud', 'followStrip', 'followPop', 'houseCard', 'shareToast',
+      'socialLayer', 'greetCard', 'greetToast', 'walkerPop', 'souqWalk', 'souqEnter', 'souqExit', 'souqPad'];
     for (const id of hideIds) {
       const el = $(id);
       if (el) el.style.display = 'none';

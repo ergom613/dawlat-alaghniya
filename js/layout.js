@@ -18,17 +18,21 @@ export const PITCH_Z = BLOCK_D + STREET;         // 28
 export const ORIGIN = { x: HOME.x - BLOCK_W / 2, z: HOME.z - (BLOCK_D * 2 + STREET) / 2 };
 export const CIVIC = [[0, 0], [0, 1]];
 
-// Landmarks. University sits where the dabke plaza used to be.
+// Landmarks. The mosque (جامع دولة الأغنياء) sits where the dabke plaza used to be
+// (UNIVERSITY rect name kept so older preview code keeps working).
 export const UNIVERSITY = { x: 216, z: -144, w: 100, d: 80 };
 // Dabke / wedding plaza moved to open land west of the city.
 export const DABKE = { x: -150, z: 30, size: 68 };
 // «مطعم البحر» on the east waterfront promenade (fully on land, deck faces the sea at +x).
 export const RESTAURANT = { x: 444, z: -24, w: 56, d: 40 }; // deck edge sits at the waterline (sea starts at x≈476)
+// Long souq reserved far west of the houses, past the wedding (stalls may be filled in later).
+export const SOUQ = { x: -360, z: 30, w: 32, d: 168 };
 
 const KEEP_OUT = [
   { x: UNIVERSITY.x, z: UNIVERSITY.z, w: UNIVERSITY.w + 24, d: UNIVERSITY.d + 24 },
   { x: DABKE.x, z: DABKE.z, w: DABKE.size + 40, d: DABKE.size + 40 },
   { x: RESTAURANT.x, z: RESTAURANT.z, w: RESTAURANT.w + 24, d: RESTAURANT.d + 24 },
+  { x: SOUQ.x, z: SOUQ.z, w: SOUQ.w + 24, d: SOUQ.d + 24 },
 ];
 
 export function keepOutRects() {
