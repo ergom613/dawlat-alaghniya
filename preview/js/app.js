@@ -778,7 +778,7 @@ function clampFreeCamera() {
   const c = camera.position;
   c.x = Math.max(CAM_BOUNDS.minX - 500, Math.min(CAM_BOUNDS.maxX + 500, c.x));
   c.z = Math.max(CAM_BOUNDS.minZ - 500, Math.min(CAM_BOUNDS.maxZ + 500, c.z));
-  const camMin = (typeof groundY === 'function' ? groundY(c.x, c.z) : 2.6) + (interiorCam ? 1.4 : 8);
+  const camMin = (typeof groundY === 'function' ? groundY(c.x, c.z) : 2.6) + (interiorCam || window.__interiorCam ? 1.4 : 8);
   if (c.y < camMin) c.y = camMin;
 }
 
