@@ -1,11 +1,13 @@
 // Hero walker: when someone finds their house, their character steps out of
 // the door, asks «وين بدك تروح؟», then walks the roads to the mosque, the
-// wedding plaza, or the restaurant, with a follow camera.
+// wedding plaza, or the restaurant — or «امشي بحرية» over the whole map —
+// with a follow camera.
 import * as THREE from 'three';
 import { UNIVERSITY, DABKE, RESTAURANT, SOUQ } from './layout.js';
 import { buildRoadGraph } from './roads.js';
 import { createHeroPerson, pickType, hookOncePerFrame } from './people.js';
 import { startCityLife } from './cityLife.js';
+import { getHeight, LAND_H } from './terrain.js';
 
 const ARRIVED = {
   mosque: 'وصلت عالجامع 🌹',
@@ -16,6 +18,7 @@ const PLACE_BTNS = [
   { key: 'mosque', label: '🕌 الجامع' },
   { key: 'wedding', label: '💃 العرس' },
   { key: 'restaurant', label: '🍽️ المطعم' },
+  { key: 'free', label: '🚶 امشي بحرية', gold: true },
 ];
 
 function app() { return window.MonacoApp; }
@@ -153,7 +156,7 @@ function showChoose() {
   const pop = ensureUI();
   setHouseCardHidden(true);
   pop.innerHTML = `<p class="wp-title">وين بدك تروح؟</p><div class="wp-btns">${
-    PLACE_BTNS.map((b) => `<button type="button" data-place="${b.key}">${b.label}</button>`).join('')
+    PLACE_BTNS.map((b) => `<button type="button"${b.gold ? ' class="gold"' : ''} data-place="${b.key}">${b.label}</button>`).join('')
   }</div>`;
   pop.hidden = false;
   pop.querySelectorAll('[data-place]').forEach((btn) => {
@@ -202,7 +205,7 @@ const state = {
 function releaseFollowForUI(e) {
   if (!state.follow) return;
   const t = e && e.target;
-  if (t && t.closest && t.closest('#walkerPop')) return;
+  if (t && t.closest && t.closest('#walkerPop, #walkerFree')) return;
   state.follow = false;
   const a = app();
   if (a && a.controls) a.controls.enabled = true;
@@ -211,7 +214,7 @@ function releaseFollowForUI(e) {
 if (typeof document !== 'undefined') {
   document.addEventListener('click', (e) => {
     const t = e.target;
-    if (t && t.closest && t.closest('#dock button, #btnFindHouse, #btnPlaces, #btnWeddingCam, #btnOverview, #souqEnter')) releaseFollowForUI(e);
+    if (t && t.closest && t.closest('#dock button, #btnFindHouse, #btnPlaces, #btnWeddingCam, #btnOverview, #souqEnter') && !t.closest('#walkerFree, #walkerPop')) releaseFollowForUI(e);
   }, true);
 }
 function holdFollow(on) {
@@ -309,6 +312,234 @@ function beginExit(info) {
   placeAt(backX, backZ, d.facing, 'walk', 0);
 }
 
+/* ---------- free walk over the whole map ---------- */
+const freeKeys = Object.create(null);
+const freeStick = { x: 0, y: 0, on: false };
+let freeTarget = null;
+const _ray = new THREE.Raycaster();
+const _ndc = new THREE.Vector2();
+const _hit = new THREE.Vector3();
+const _plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -LAND_H);
+
+function inBox(x, z, cx, cz, w, d) {
+  return Math.abs(x - cx) < w / 2 && Math.abs(z - cz) < d / 2;
+}
+function inSouqNaveOrGate(x, z) {
+  const dx = x - SOUQ.x, dz = z - SOUQ.z;
+  const inNave = Math.abs(dx) <= 3.6 && Math.abs(dz) <= 78;
+  const inEastGate = Math.abs(dz) <= 2.8 && dx >= -3.6 && dx <= SOUQ.w / 2 + 8;
+  const inEnds = Math.abs(dx) <= 3.6 && Math.abs(dz) <= 83;
+  return inNave || inEastGate || inEnds;
+}
+function inSouqWall(x, z) {
+  if (!inBox(x, z, SOUQ.x, SOUQ.z, SOUQ.w + 2, SOUQ.d + 2)) return false;
+  return !inSouqNaveOrGate(x, z);
+}
+function isSea(x, z) {
+  const h = getHeight(x, z);
+  return !Number.isFinite(h) || h < 0.4;
+}
+function walkable(x, z) {
+  if (isSea(x, z)) return false;
+  if (inSouqWall(x, z)) return false;
+  if (inBox(x, z, UNIVERSITY.x, UNIVERSITY.z, UNIVERSITY.w - 10, UNIVERSITY.d - 10)) return false;
+  if (inBox(x, z, RESTAURANT.x, RESTAURANT.z, RESTAURANT.w - 6, RESTAURANT.d - 8)) return false;
+  const pl = places();
+  if (pl.mosque && pl.mosque.position && inBox(x, z, pl.mosque.position.x, pl.mosque.position.z, 52, 52)) return false;
+  return true;
+}
+
+function ensureFreeUI() {
+  if (document.getElementById('walkerFree')) return document.getElementById('walkerFree');
+  const style = document.createElement('style');
+  style.id = 'walkerFreeStyle';
+  style.textContent = `
+    #walkerFree { position: fixed; inset: 0; pointer-events: none; z-index: 86; font-family: Cairo, "Noto Naskh Arabic", Tahoma, sans-serif; }
+    #walkerFree[hidden] { display: none !important; }
+    #walkerFreeExit {
+      pointer-events: auto; position: absolute; right: 14px; bottom: 250px;
+      border: 1px solid rgba(217,169,42,0.55); background: rgba(18,16,12,0.72);
+      color: #f3efdf; font-weight: 800; font-family: inherit; font-size: 15px;
+      border-radius: 14px; padding: 10px 14px; cursor: pointer; backdrop-filter: blur(8px);
+    }
+    #walkerStick {
+      pointer-events: auto; position: absolute; right: 16px; bottom: 110px;
+      width: 118px; height: 118px; border-radius: 50%;
+      background: rgba(18,16,12,0.42); border: 1px solid rgba(217,169,42,0.45);
+      touch-action: none;
+    }
+    #walkerStick .knob {
+      position: absolute; left: 50%; top: 50%; width: 54px; height: 54px;
+      margin: -27px 0 0 -27px; border-radius: 50%;
+      background: linear-gradient(180deg, #f0d36a, #d4a84a); box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+    }
+    @media (min-width: 900px) { #walkerStick { display: none; } }
+  `;
+  document.head.appendChild(style);
+  const wrap = document.createElement('div');
+  wrap.id = 'walkerFree';
+  wrap.hidden = true;
+  wrap.innerHTML = `<button id="walkerFreeExit" type="button">خروج</button><div id="walkerStick"><div class="knob"></div></div>`;
+  document.body.appendChild(wrap);
+  document.getElementById('walkerFreeExit').addEventListener('click', (e) => {
+    e.preventDefault();
+    stopFree();
+  });
+  const stick = document.getElementById('walkerStick');
+  const knob = stick.querySelector('.knob');
+  const setStick = (cx, cy) => {
+    const r = stick.getBoundingClientRect();
+    const mx = r.left + r.width / 2, my = r.top + r.height / 2;
+    let dx = cx - mx, dy = cy - my;
+    const max = r.width * 0.36;
+    const len = Math.hypot(dx, dy) || 1;
+    if (len > max) { dx *= max / len; dy *= max / len; }
+    freeStick.x = dx / max;
+    freeStick.y = dy / max;
+    knob.style.transform = `translate(${dx}px, ${dy}px)`;
+  };
+  const endStick = () => {
+    freeStick.x = 0; freeStick.y = 0; freeStick.on = false;
+    knob.style.transform = '';
+  };
+  stick.addEventListener('pointerdown', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    freeStick.on = true; freeTarget = null;
+    try { stick.setPointerCapture(e.pointerId); } catch { /* */ }
+    setStick(e.clientX, e.clientY);
+  });
+  stick.addEventListener('pointermove', (e) => {
+    if (!freeStick.on) return;
+    e.preventDefault();
+    setStick(e.clientX, e.clientY);
+  });
+  const up = (e) => { if (freeStick.on) endStick(); };
+  stick.addEventListener('pointerup', up);
+  stick.addEventListener('pointercancel', up);
+  return wrap;
+}
+
+function bindFreeInput() {
+  if (bindFreeInput._done) return;
+  bindFreeInput._done = true;
+  window.addEventListener('keydown', (e) => {
+    if (state.mode !== 'free') return;
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test((e.target && e.target.tagName) || '')) return;
+    freeKeys[e.code] = true;
+    if (/^Arrow|Key[WASD]|Shift/.test(e.code)) e.preventDefault();
+    if (e.code === 'Escape') stopFree();
+  });
+  window.addEventListener('keyup', (e) => { freeKeys[e.code] = false; });
+  const canvas = () => {
+    const a = app();
+    return a && a.renderer && a.renderer.domElement;
+  };
+  const onDown = (e) => {
+    if (state.mode !== 'free') return;
+    if (e.target && e.target.closest && e.target.closest('#walkerFree, #walkerPop, #dock, button, input')) return;
+    const el = canvas();
+    if (!el || (e.target !== el && !el.contains(e.target))) return;
+    const a = app();
+    if (!a || !a.camera) return;
+    const r = el.getBoundingClientRect();
+    _ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    _ray.setFromCamera(_ndc, a.camera);
+    _plane.constant = -gy(state.x, state.z);
+    if (!_ray.ray.intersectPlane(_plane, _hit)) return;
+    if (walkable(_hit.x, _hit.z)) {
+      freeTarget = { x: _hit.x, z: _hit.z };
+      freeStick.x = 0; freeStick.y = 0;
+    }
+  };
+  window.addEventListener('pointerdown', onDown, true);
+}
+
+function startFree() {
+  if (isRecord()) return;
+  const a = app();
+  if (a && a.tour && a.tour.pause) a.tour.pause();
+  if (a && a.setCamMode) a.setCamMode('free', true);
+  state.mode = 'free';
+  state.place = 'free';
+  state._after = null;
+  freeTarget = null;
+  freeStick.x = 0; freeStick.y = 0; freeStick.on = false;
+  holdFollow(true);
+  hidePop();
+  setHouseCardHidden(true);
+  const ui = ensureFreeUI();
+  ui.hidden = false;
+  bindFreeInput();
+}
+
+function stopFree() {
+  const ui = document.getElementById('walkerFree');
+  if (ui) ui.hidden = true;
+  freeTarget = null;
+  freeStick.on = false;
+  state.mode = 'choose';
+  placeAt(state.x, state.z, state.yaw, 'idle', 0);
+  holdFollow(true);
+  showChoose();
+}
+
+function tickFree(dt) {
+  const a = app();
+  const cam = a && a.camera;
+  let ix = 0, iy = 0;
+  if (freeKeys.KeyW || freeKeys.ArrowUp) iy -= 1;
+  if (freeKeys.KeyS || freeKeys.ArrowDown) iy += 1;
+  if (freeKeys.KeyA || freeKeys.ArrowLeft) ix -= 1;
+  if (freeKeys.KeyD || freeKeys.ArrowRight) ix += 1;
+  if (freeStick.on && (Math.abs(freeStick.x) > 0.08 || Math.abs(freeStick.y) > 0.08)) {
+    ix = freeStick.x;
+    iy = freeStick.y;
+  }
+  const run = !!(freeKeys.ShiftLeft || freeKeys.ShiftRight);
+  const spd = (run ? 9.2 : 5.8);
+  let mx = 0, mz = 0;
+  if (Math.abs(ix) > 0.04 || Math.abs(iy) > 0.04) {
+    freeTarget = null;
+    // Camera-relative: stick/keys move in the view direction, character turns to follow.
+    let cyaw = state.yaw;
+    if (cam) {
+      const dx = state.x - cam.position.x, dz = state.z - cam.position.z;
+      if (Math.hypot(dx, dz) > 0.2) cyaw = Math.atan2(dx, dz);
+    }
+    // iy < 0 is forward (W / stick up)
+    const fwd = -iy, str = ix;
+    mx = (Math.sin(cyaw) * fwd + Math.cos(cyaw) * str) * spd * dt;
+    mz = (Math.cos(cyaw) * fwd - Math.sin(cyaw) * str) * spd * dt;
+  } else if (freeTarget) {
+    const dx = freeTarget.x - state.x, dz = freeTarget.z - state.z;
+    const len = Math.hypot(dx, dz);
+    if (len < 0.45) {
+      freeTarget = null;
+    } else {
+      const step = Math.min(len, spd * dt);
+      mx = dx / len * step;
+      mz = dz / len * step;
+    }
+  }
+  if (mx || mz) {
+    let nx = state.x + mx, nz = state.z + mz;
+    if (!walkable(nx, nz)) {
+      if (walkable(nx, state.z)) nz = state.z;
+      else if (walkable(state.x, nz)) nx = state.x;
+      else { nx = state.x; nz = state.z; }
+    }
+    if (nx !== state.x || nz !== state.z) {
+      const yaw = Math.atan2(nx - state.x, nz - state.z);
+      placeAt(nx, nz, yaw, 'walk', dt);
+    } else {
+      placeAt(state.x, state.z, state.yaw, 'idle', 0);
+    }
+  } else if (state.hero) {
+    placeAt(state.x, state.z, state.yaw, 'idle', 0);
+  }
+}
+
+
 function startPath(pts, then) {
   state.path = (pts || []).map((p) => ({ x: p.x, z: p.z }));
   if (state.path.length < 2) state.path = [{ x: state.x, z: state.z }, { x: state.x, z: state.z }];
@@ -322,6 +553,7 @@ function startPath(pts, then) {
 }
 
 function choose(key) {
+  if (key === 'free') { startFree(); return; }
   const from = { x: state.x, z: state.z };
   const pts = routeToPlace(from, key);
   if (!pts) return;
@@ -392,14 +624,19 @@ function followCamera(dt) {
 
 function tick(dt) {
   if (state.mode === 'idle') return;
-  if (state.mode === 'exit' || state.mode === 'walk') {
+  if (state.mode === 'free') {
+    tickFree(dt);
+  } else if (state.mode === 'exit' || state.mode === 'walk') {
     const done = advance(dt);
     if (done) {
       if (state.mode === 'exit') {
-        state.mode = 'choose';
-        placeAt(state.x, state.z, state.yaw, 'idle', 0);
-        holdFollow(true);
-        showChoose();
+        if (state._wantFree) { state._wantFree = false; startFree(); }
+        else {
+          state.mode = 'choose';
+          placeAt(state.x, state.z, state.yaw, 'idle', 0);
+          holdFollow(true);
+          showChoose();
+        }
       } else if (state._after) {
         const fn = state._after;
         state._after = null;
@@ -414,7 +651,7 @@ function tick(dt) {
       camera: cam,
     });
   }
-  if (state.follow && (state.mode === 'walk' || state.mode === 'exit' || state.mode === 'choose' || state.mode === 'arrived')) {
+  if (state.follow && (state.mode === 'walk' || state.mode === 'exit' || state.mode === 'choose' || state.mode === 'arrived' || state.mode === 'free')) {
     followCamera(dt);
   }
 }
@@ -480,7 +717,8 @@ function applyDeepLink() {
   const params = new URLSearchParams(location.search);
   const h = params.get('house');
   const n = params.get('name');
-  if (!h && !n) return;
+  const walk = (params.get('walk') || '').toLowerCase();
+  if (!h && !n && walk !== 'free') return;
   const a = app();
   if (!a) return;
   let r = null;
@@ -490,11 +728,13 @@ function applyDeepLink() {
     a.search(n);
     r = rs.find((x) => String(x.name || '').toLowerCase().includes(String(n).toLowerCase()));
   }
+  if (!r && walk === 'free' && rs.length) r = rs.find((x) => String(x.id) === '1') || rs[0];
   if (r) {
     if (a.search) a.search(String(r.id));
     const delay = window.cityPlaces ? 400 : 2000;
     setTimeout(() => {
       if (state.mode !== 'idle' && state.startedFor === r.id) return;
+      if (walk === 'free') state._wantFree = true;
       startFromHouse(window.lastHouseFound || inferHouseFromResident(r));
     }, delay);
   }
@@ -523,6 +763,8 @@ window.Walker = {
   start: startFromHouse,
   choose,
   goHome,
+  startFree,
+  stopFree,
   setTimeScale: (n) => { state.timeScale = Math.max(0.1, Number(n) || 1); },
   getState: () => ({
     mode: state.mode, x: state.x, z: state.z, yaw: state.yaw,
