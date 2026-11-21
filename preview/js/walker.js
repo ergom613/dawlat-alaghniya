@@ -197,6 +197,7 @@ const state = {
   speed: 6.2,
   timeScale: 1,
   follow: false,
+  camFree: false,
   place: null,
   startedFor: null,
 };
@@ -205,25 +206,42 @@ const state = {
 function releaseFollowForUI(e) {
   if (!state.follow) return;
   const t = e && e.target;
-  if (t && t.closest && t.closest('#walkerPop, #walkerFree')) return;
+  if (t && t.closest && t.closest('#walkerPop, #walkerFree, #walkerCamBtn')) return;
   state.follow = false;
+  state.camFree = false;
+  window.__walkerFollow = false;
+  restoreOrbitDefaults();
   const a = app();
   if (a && a.controls) a.controls.enabled = true;
   hidePop();
+  syncCamBtn();
 }
 if (typeof document !== 'undefined') {
   document.addEventListener('click', (e) => {
     const t = e.target;
-    if (t && t.closest && t.closest('#dock button, #btnFindHouse, #btnPlaces, #btnWeddingCam, #btnOverview, #souqEnter') && !t.closest('#walkerFree, #walkerPop')) releaseFollowForUI(e);
+    if (t && t.closest && t.closest('#dock button, #btnFindHouse, #btnPlaces, #btnWeddingCam, #btnOverview, #souqEnter') && !t.closest('#walkerFree, #walkerPop, #walkerCamBtn')) releaseFollowForUI(e);
   }, true);
 }
 function holdFollow(on) {
   state.follow = on !== false;
   const a = app();
+  if (state.follow) {
+    window.__walkerFollow = true;
+    if (!state.camFree) {
+      followSettled = false;
+      followYaw = state.yaw || 0;
+      applyLockedControls();
+    }
+  } else {
+    state.camFree = false;
+    window.__walkerFollow = false;
+    restoreOrbitDefaults();
+  }
   if (a && a.controls) {
-    if (state.follow) a.controls.enabled = false;
+    if (state.follow && !state.camFree) a.controls.enabled = false;
     else a.controls.enabled = true;
   }
+  syncCamBtn();
 }
 
 function ensureHero(info) {
@@ -436,7 +454,8 @@ function bindFreeInput() {
   };
   const onDown = (e) => {
     if (state.mode !== 'free') return;
-    if (e.target && e.target.closest && e.target.closest('#walkerFree, #walkerPop, #dock, button, input')) return;
+    if (state.camFree) return; // drag is for orbiting, not walk-to
+    if (e.target && e.target.closest && e.target.closest('#walkerFree, #walkerPop, #walkerCamBtn, #dock, button, input')) return;
     const el = canvas();
     if (!el || (e.target !== el && !el.contains(e.target))) return;
     const a = app();
@@ -483,9 +502,22 @@ function stopFree() {
   showChoose();
 }
 
-function tickFree(dt) {
+function tickFree(dt, ignoreScale) {
   const a = app();
   const cam = a && a.camera;
+  const scale = ignoreScale ? 1 : state.timeScale;
+  dt = (dt || 0) * scale;
+  if (dt <= 0 && !ignoreScale) {
+    // Frozen for capture: still pose/camera, don't step.
+    if (state.hero) {
+      state.hero.applyPose({
+        x: state.x, y: gy(state.x, state.z), z: state.z, yaw: state.yaw,
+        phase: state.phase, mode: 'idle', time: performance.now() / 1000,
+        camera: cam,
+      });
+    }
+    return;
+  }
   let ix = 0, iy = 0;
   if (freeKeys.KeyW || freeKeys.ArrowUp) iy -= 1;
   if (freeKeys.KeyS || freeKeys.ArrowDown) iy += 1;
@@ -604,22 +636,169 @@ function advance(dt) {
   return state.pi >= path.length - 1 && left >= 0;
 }
 
+/* ---- third-person camera: locked behind the back, or free orbit ---- */
+let followYaw = 0;
+let followSettled = false;
+let _lastFollowX = null, _lastFollowZ = null;
+const _wantP = new THREE.Vector3();
+const _wantT = new THREE.Vector3();
+let _savedTouches = null, _savedMouse = null;
+
+function wrapPi(d) {
+  return Math.atan2(Math.sin(d), Math.cos(d));
+}
+function orbitMaps() {
+  const MOUSE = THREE.MOUSE || { ROTATE: 0, DOLLY: 1, PAN: 2 };
+  const TOUCH = THREE.TOUCH || { ROTATE: 0, PAN: 1, DOLLY_PAN: 2, DOLLY_ROTATE: 3 };
+  return { MOUSE, TOUCH };
+}
+function applyLockedControls() {
+  const a = app();
+  const ctl = a && a.controls;
+  if (!ctl) return;
+  ctl.enabled = false;
+  ctl.enableDamping = false;
+  if (ctl._sphericalDelta && ctl._sphericalDelta.set) ctl._sphericalDelta.set(0, 0, 0);
+  if (ctl._panOffset && ctl._panOffset.set) ctl._panOffset.set(0, 0, 0);
+}
+function applyFreeCamControls() {
+  const a = app();
+  const ctl = a && a.controls;
+  if (!ctl) return;
+  const { MOUSE, TOUCH } = orbitMaps();
+  if (!_savedTouches) {
+    _savedTouches = Object.assign({}, ctl.touches);
+    _savedMouse = Object.assign({}, ctl.mouseButtons);
+  }
+  ctl.enabled = true;
+  ctl.enableDamping = true;
+  ctl.dampingFactor = 0.12;
+  ctl.enableRotate = true;
+  ctl.enablePan = true;
+  ctl.enableZoom = true;
+  ctl.minDistance = 2.2;
+  ctl.maxDistance = 48;
+  ctl.touches = { ONE: TOUCH.ROTATE, TWO: TOUCH.DOLLY_PAN };
+  ctl.mouseButtons = { LEFT: MOUSE.ROTATE, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.PAN };
+}
+function restoreOrbitDefaults() {
+  const a = app();
+  const ctl = a && a.controls;
+  if (!ctl) return;
+  const { MOUSE, TOUCH } = orbitMaps();
+  ctl.touches = _savedTouches || { ONE: TOUCH.PAN, TWO: TOUCH.DOLLY_ROTATE };
+  ctl.mouseButtons = _savedMouse || { LEFT: MOUSE.PAN, MIDDLE: MOUSE.DOLLY, RIGHT: MOUSE.ROTATE };
+  ctl.minDistance = 6;
+  ctl.maxDistance = 12000;
+  ctl.enableDamping = true;
+  ctl.dampingFactor = 0.08;
+  ctl.enabled = true;
+}
+function toggleCamFree() {
+  if (!state.follow || state.mode === 'idle' || isRecord()) return;
+  state.camFree = !state.camFree;
+  followSettled = false;
+  _lastFollowX = state.x;
+  _lastFollowZ = state.z;
+  if (state.camFree) applyFreeCamControls();
+  else {
+    applyLockedControls();
+    followYaw = state.yaw || 0;
+  }
+  syncCamBtn();
+}
+function ensureCamUI() {
+  let btn = document.getElementById('walkerCamBtn');
+  if (btn) return btn;
+  if (!document.getElementById('walkerCamStyle')) {
+    const style = document.createElement('style');
+    style.id = 'walkerCamStyle';
+    style.textContent = `
+      #walkerCamBtn {
+        position: fixed; z-index: 87; pointer-events: auto;
+        left: max(14px, env(safe-area-inset-left, 0px));
+        top: calc(var(--safe-top, 10px) + 70px);
+        border: 1px solid var(--line, rgba(232,196,90,0.38));
+        background: var(--btn, rgba(18,16,12,0.78));
+        color: var(--text, #fff6df);
+        font-weight: 800; font-family: Cairo, "Noto Naskh Arabic", Tahoma, sans-serif;
+        font-size: 14px; line-height: 1;
+        border-radius: 999px; height: 44px; padding: 0 14px;
+        cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+        backdrop-filter: blur(8px);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.28);
+      }
+      #walkerCamBtn[hidden] { display: none !important; }
+      #walkerCamBtn[aria-pressed="true"] {
+        background: linear-gradient(180deg, #f0d36a, #d4a84a); color: #2a1f0a; border-color: transparent;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  btn = document.createElement('button');
+  btn.id = 'walkerCamBtn';
+  btn.type = 'button';
+  btn.hidden = true;
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleCamFree();
+  });
+  document.body.appendChild(btn);
+  return btn;
+}
+function syncCamBtn() {
+  if (typeof document === 'undefined') return;
+  const btn = ensureCamUI();
+  const show = !!state.follow && state.mode !== 'idle' && !isRecord();
+  btn.hidden = !show;
+  const free = !!state.camFree;
+  btn.textContent = free ? '🎥 ورا الضهر' : '🎥 كاميرا حرة';
+  btn.setAttribute('aria-pressed', free ? 'true' : 'false');
+}
+
 function followCamera(dt) {
   if (!state.follow) return;
   const a = app();
   if (!a || !a.camera || !a.controls) return;
   const cam = a.camera, ctl = a.controls;
-  const yaw = state.yaw || 0;
-  const fx = Math.sin(yaw), fz = Math.cos(yaw);
+  window.__walkerFollow = true;
+  const dtC = Math.min(0.05, Math.max(0, dt || 0.016)) || 0.016;
+
+  if (state.camFree) {
+    if (_lastFollowX != null) {
+      cam.position.x += state.x - _lastFollowX;
+      cam.position.z += state.z - _lastFollowZ;
+    }
+    ctl.target.set(state.x, gy(state.x, state.z) + 1.25, state.z);
+    _lastFollowX = state.x;
+    _lastFollowZ = state.z;
+    return;
+  }
+
+  applyLockedControls();
+  const targetYaw = state.yaw || 0;
+  followYaw += wrapPi(targetYaw - followYaw) * (1 - Math.exp(-dtC * 7));
+  const fx = Math.sin(followYaw), fz = Math.cos(followYaw);
   const x = state.x, z = state.z, y = gy(x, z);
-  const back = 5.4, height = 2.7, ahead = 1.4, side = 1.6;
-  const sx = Math.cos(yaw), sz = -Math.sin(yaw);
-  const wantP = new THREE.Vector3(x - fx * back + sx * side, y + height, z - fz * back + sz * side);
-  const wantT = new THREE.Vector3(x + fx * ahead, y + 1.15, z + fz * ahead);
-  const k = 1 - Math.pow(0.001, Math.max(dt, 0.001) * 12);
-  cam.position.lerp(wantP, k);
-  ctl.target.lerp(wantT, k);
-  ctl.update();
+  // Straight behind the back, a little above the head, looking forward.
+  const back = 5.6, height = 2.55, ahead = 3.4;
+  _wantP.set(x - fx * back, y + height, z - fz * back);
+  _wantT.set(x + fx * ahead, y + 1.2, z + fz * ahead);
+
+  const dist = Math.hypot(cam.position.x - _wantP.x, cam.position.y - _wantP.y, cam.position.z - _wantP.z);
+  if (dist < 0.08) followSettled = true;
+  else if (dist > 2.8) followSettled = false;
+  if (followSettled) {
+    cam.position.copy(_wantP);
+  } else {
+    const posK = 1 - Math.exp(-dtC * (dist > 25 ? 2.4 : 5.5));
+    cam.position.lerp(_wantP, posK);
+  }
+  ctl.target.copy(_wantT);
+  cam.lookAt(_wantT);
+  _lastFollowX = x;
+  _lastFollowZ = z;
 }
 
 function tick(dt) {
@@ -769,12 +948,14 @@ window.Walker = {
   setTarget: (x, z) => { freeTarget = { x, z }; freeStick.on = false; },
   stepFree: (dt) => {
     if (state.mode !== 'free') return;
-    tickFree(dt || 0.016);
+    tickFree(dt || 0.016, true);
     if (state.follow) followCamera(dt || 0.016);
   },
   setTimeScale: (n) => { state.timeScale = Math.max(0, Number(n) || 0); },
+  setCamFree: (on) => { state.camFree = on === true; if (state.camFree) applyFreeCamControls(); else { applyLockedControls(); followSettled = false; } syncCamBtn(); },
   getState: () => ({
     mode: state.mode, x: state.x, z: state.z, yaw: state.yaw,
+    follow: state.follow, camFree: state.camFree,
     place: state.place, name: state.info && state.info.name,
     type: state.hero && state.hero.type, path: state.path && state.path.length,
   }),
