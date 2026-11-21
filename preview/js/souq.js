@@ -409,15 +409,16 @@ export function createSouq({ scene, groundY, quality }) {
       B(0x3a0c0c),
     );
     back.position.set(shopFrontX(s.side) - s.side * 0.22, 3.18, s.z);
-    back.rotation.y = s.ry;
-    // Opaque + DoubleSide, and sit clearly in front of the backing so the
-    // gold Arabic name doesn't z-fight away at night.
+    // PlaneGeometry faces +Z; s.ry points into the shop, so flip to face the street
+    // (otherwise Arabic reads mirrored from the nave).
+    const signRy = -s.ry;
+    back.rotation.y = signRy;
     mat.transparent = false;
-    mat.side = THREE.DoubleSide;
+    mat.side = THREE.FrontSide;
     mat.depthWrite = true;
     const pl = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 0.62), mat);
     pl.position.set(shopFrontX(s.side) - s.side * 0.40, 3.18, s.z);
-    pl.rotation.y = s.ry;
+    pl.rotation.y = signRy;
     pl.renderOrder = 2;
     signGroup.add(back);
     signGroup.add(pl);
