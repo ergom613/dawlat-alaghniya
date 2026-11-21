@@ -357,11 +357,13 @@ export function makeNamePlate(text) {
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.needsUpdate = true;
-  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, depthWrite: false });
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(1.45, 0.28), mat);
-  const backing = new THREE.Mesh(new THREE.BoxGeometry(1.48, 0.30, 0.07), new THREE.MeshLambertMaterial({ color: 0xc9a227 }));
-  backing.position.z = -0.02;
-  g.add(backing, plane);
+  // Billboard sprite: the follow camera sits behind the character, so a flat
+  // plate facing forward only ever showed its blank back. A sprite always faces
+  // the camera, so the name is readable from every side.
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
+  const plane = new THREE.Sprite(mat);
+  plane.scale.set(1.45, 0.28, 1);
+  g.add(plane);
   g.userData.setText = (t) => {
     ctx.fillStyle = '#e8c45a';
     ctx.fillRect(18, 16, w - 36, h - 36);

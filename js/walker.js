@@ -197,6 +197,23 @@ const state = {
   place: null,
   startedFor: null,
 };
+// If the visitor picks another camera action (أماكن, العرس, الخريطة, search…)
+// while the follow camera is on, let go of the camera instead of fighting it.
+function releaseFollowForUI(e) {
+  if (!state.follow) return;
+  const t = e && e.target;
+  if (t && t.closest && t.closest('#walkerPop')) return;
+  state.follow = false;
+  const a = app();
+  if (a && a.controls) a.controls.enabled = true;
+  hidePop();
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', (e) => {
+    const t = e.target;
+    if (t && t.closest && t.closest('#dock button, #btnFindHouse, #btnPlaces, #btnWeddingCam, #btnOverview, #souqEnter')) releaseFollowForUI(e);
+  }, true);
+}
 function holdFollow(on) {
   state.follow = on !== false;
   const a = app();
