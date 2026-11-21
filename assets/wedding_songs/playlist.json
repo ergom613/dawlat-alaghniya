@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "defaultIndex": 0,
+  "spatial": {
+    "silentBeyond": 90,
+    "fullVolumeWithin": 22,
+    "refDistance": 18,
+    "rolloffFactor": 1.4
+  },
+  "tracks": [
+    {
+      "id": "asala-yousef-dabke-w-dabike",
+      "title": "دبكه ودبيكه",
+      "artist": "Asala Yousef",
+      "type": "youtube",
+      "youtubeId": "2Ztwby_SXGM",
+      "sourceUrl": "https://www.youtube.com/watch?v=2Ztwby_SXGM",
+      "license": "Copyrighted. Streamed only through the official YouTube IFrame Player API. Not downloaded or rehosted.",
+      "why": "The Syrian dabke song Mohammad asked for. Plays from YouTube after the visitor taps 🔊; volume follows camera distance via setVolume()."
+    },
+    {
+      "id": "dabke-fusion-theme",
+      "title": "Dabke Fusion Theme",
+      "artist": "vjgalaxy",
+      "file": "01_dabke-fusion-theme.mp3",
+      "preview": "../../_work/dabke_previews/01_dabke-fusion-theme_15s.mp3",
+      "durationSec": 62.9,
+      "license": "Pixabay Content License",
+      "licenseUrl": "https://pixabay.com/service/license-summary/",
+      "sourceUrl": "https://pixabay.com/music/arabic-dabke-fusion-theme-588122/",
+      "aiGenerated": true,
+      "why": "Most direct dabke dance cue: titled and tagged as dabke/fusion belly-dance instrumental. Short looping bed for the circle. Set as the default (first in the playlist).",
+      "type": "mp3"
+    },
+    {
+      "id": "melodic-dabke-fusion-theme",
+      "title": "Melodic Dabke Fusion Theme",
+      "artist": "vjgalaxy",
+      "file": "02_melodic-dabke-fusion-theme.mp3",
+      "preview": "../../_work/dabke_previews/02_melodic-dabke-fusion-theme_15s.mp3",
+      "durationSec": 73.0,
+      "license": "Pixabay Content License",
+      "licenseUrl": "https://pixabay.com/service/license-summary/",
+      "sourceUrl": "https://pixabay.com/music/arabic-melodic-dabke-fusion-theme-588123/",
+      "aiGenerated": true,
+      "why": "Same series as #1, a slightly longer and more melodic dabke-fusion instrumental. Good second track in the playlist.",
+      "type": "mp3"
+    },
+    {
+      "id": "festival-of-eid-joy-2",
+      "title": "Festival of Eid Joy (2)",
+      "artist": "adiiswanto",
+      "file": "03_festival-of-eid-joy-2.mp3",
+      "preview": "../../_work/dabke_previews/03_festival-of-eid-joy-2_15s.mp3",
+      "durationSec": 133.9,
+      "license": "Pixabay Content License",
+      "licenseUrl": "https://pixabay.com/service/license-summary/",
+      "sourceUrl": "https://pixabay.com/music/world-festival-of-eid-joy-2-305122/",
+      "aiGenerated": true,
+      "why": "Festive Levantine/Middle Eastern instrumental with strings and percussion (oud/qanun/darbuka/mizmar tags). Explicitly tagged dabke. Energetic celebration length (~2:14).",
+      "type": "mp3"
+    },
+    {
+      "id": "festival-of-eid-joy-1",
+      "title": "Festival of Eid Joy (1)",
+      "artist": "adiiswanto",
+      "file": "04_festival-of-eid-joy-1.mp3",
+      "preview": "../../_work/dabke_previews/04_festival-of-eid-joy-1_15s.mp3",
+      "durationSec": 238.8,
+      "license": "Pixabay Content License",
+      "licenseUrl": "https://pixabay.com/service/license-summary/",
+      "sourceUrl": "https://pixabay.com/music/folk-festival-of-eid-joy-1-305121/",
+      "aiGenerated": true,
+      "why": "Companion festive track to #3, also tagged dabke and Levantine. Longer bed (~3:59) for the square if a short loop feels tight.",
+      "type": "mp3"
+    },
+    {
+      "id": "sam-energetic-wedding-music-2",
+      "title": "Sam energetic Wedding music 2",
+      "artist": "SAMusic",
+      "file": "05_sam-energetic-wedding-music-2.mp3",
+      "preview": "../../_work/dabke_previews/05_sam-energetic-wedding-music-2_15s.mp3",
+      "durationSec": 135.8,
+      "license": "Pixabay Content License",
+      "licenseUrl": "https://pixabay.com/service/license-summary/",
+      "sourceUrl": "https://pixabay.com/music/main-title-sam-energetic-wedding-music-2-264929/",
+      "aiGenerated": true,
+      "why": "Royalty-free energetic wedding instrumental. Not labeled dabke, included as a fifth festive wedding option.",
+      "type": "mp3"
+    }
+  ]
+}

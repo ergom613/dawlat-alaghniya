@@ -1046,15 +1046,29 @@ function updateCrowdLabels() {
   }
 }
 
+function sakinWord(n) {
+  const x = n | 0;
+  if (x === 1) return 'ساكن';
+  if (x === 2) return 'ساكنان';
+  if (x >= 3 && x <= 10) return 'سكان';
+  return 'ساكن';
+}
+
+function residentHeadcount() {
+  if (DEMO_N > 1 && crowd) return crowd.count;
+  return (allResidents && allResidents.length) ? allResidents.length : 0;
+}
+
 function updateStats() {
-  const n = crowd ? crowd.count : Math.max(1, allResidents.length || 1);
+  const n = residentHeadcount();
+  const w = sakinWord(n);
   const countEl = $('residentsCount');
   const hintEl = $('residentsHint');
-  if (countEl) countEl.textContent = arNum(n) + ' ساكن';
+  if (countEl) countEl.textContent = n ? (arNum(n) + ' ' + w) : '…';
   if (hintEl) {
     if (DEMO_N > 1) hintEl.textContent = 'أسماء تجريبية · example';
-    else if (n === 1) hintEl.textContent = 'أول بيت بالدولة';
-    else hintEl.textContent = 'سكّان الدولة';
+    else if (!n) hintEl.textContent = 'عم نعدّ السكان';
+    else hintEl.textContent = 'صرنا ' + arNum(n) + ' ' + w + ' وعم نكبر 🏗️';
   }
   const fpsEl = $('fpsMeter');
   if (fpsEl && DEMO_N > 1) {
@@ -2102,7 +2116,7 @@ function bindHUD() {
   levelSlider = $('levelSlider');
   levelLabel = $('levelLabel');
   foundMsg = $('foundMsg');
-  $('residentsCount').textContent = '١ ساكن';
+  updateStats();
   if (levelSlider) {
     levelSlider.value = String(currentLevel);
     levelSlider.addEventListener('input', () => {

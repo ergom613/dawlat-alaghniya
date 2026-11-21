@@ -355,8 +355,8 @@
           <p><span class="en">State of the Rich</span> — تجربة أولى</p>
         </div>
         <div id="stats" class="panel">
-          <div class="n" id="residentsCount">١ ساكن</div>
-          <div class="k" id="residentsHint">متابع واحد بهالتجربة</div>
+          <div class="n" id="residentsCount">…</div>
+          <div class="k" id="residentsHint">عم نعدّ السكان</div>
           <div id="fpsMeter"></div>
         </div>
         <form id="searchForm" class="panel">
@@ -408,6 +408,26 @@
       </div>
     </div>
   </div>
+  <script>
+    (function () {
+      function arNum(n) { return String(n).replace(/[0-9]/g, function (d) { return '٠١٢٣٤٥٦٧٨٩'[d]; }); }
+      function sakinWord(n) {
+        if (n === 1) return 'ساكن';
+        if (n === 2) return 'ساكنان';
+        if (n >= 3 && n <= 10) return 'سكان';
+        return 'ساكن';
+      }
+      fetch('./data/residents.json').then(function (r) { return r.json(); }).then(function (d) {
+        var n = (d && d.residents) ? d.residents.length : 0;
+        if (!n) return;
+        var w = sakinWord(n);
+        var c = document.getElementById('residentsCount');
+        var h = document.getElementById('residentsHint');
+        if (c) c.textContent = arNum(n) + ' ' + w;
+        if (h) h.textContent = 'صرنا ' + arNum(n) + ' ' + w + ' وعم نكبر 🏗️';
+      }).catch(function () {});
+    })();
+  </script>
   <script type="module" src="./js/app.js"></script>
 </body>
 </html>

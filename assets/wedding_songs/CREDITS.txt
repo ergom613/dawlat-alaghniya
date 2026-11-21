@@ -1,0 +1,102 @@
+Wedding-square default playlist — licenses
+==========================================
+
+YouTube (default, first in the playlist)
+---------------------------------------
+دبكه ودبيكه — Asala Yousef
+https://www.youtube.com/watch?v=2Ztwby_SXGM
+
+This song is copyrighted. It is NOT downloaded, ripped, or rehosted.
+The preview site streams it with the official YouTube IFrame Player API
+after the visitor taps 🔊. Volume is set with player.setVolume() from
+the camera's distance to the square (0 when far away). A small official
+player stays visible while this track is playing (YouTube's rules).
+
+The five Pixabay instrumentals below stay in the playlist after the YouTube track.
+
+These five tracks are the default songs for the preview wedding square
+(ساحة عرس). They are instrumentals released under the Pixabay Content
+License, which allows use in commercial and non-commercial projects
+without mandatory attribution (attribution is appreciated). You may not
+resell the files as a standalone music pack or stock library.
+
+Official license: https://pixabay.com/service/license-summary/
+
+IMPORTANT
+---------
+- These are royalty-free "dabke fusion" / festive Middle Eastern
+  instrumentals, NOT famous commercial Syrian dabke hits (those have
+  copyright and must not be used).
+- Pixabay marked all five as "AI generated".
+- Pixabay does not guarantee that a track will never be claimed by
+  Content ID on TikTok, Facebook, Instagram, or YouTube. For site
+  playback on the map this is usually fine; if a daily video uses the
+  same bed and gets muted, switch tracks or use a file Mohammad provides.
+- Traditional village dabke recordings with a clear reuse license are
+  very rare. These were the closest clearly licensed dabke-sounding
+  tracks that could be obtained.
+
+Playlist (default first)
+------------------------
+
+1. Dabke Fusion Theme
+   Artist:     vjgalaxy
+   Duration:   1:03
+   License:    Pixabay Content License
+   Page:       https://pixabay.com/music/arabic-dabke-fusion-theme-588122/
+   File:       01_dabke-fusion-theme.mp3
+   Why first:  Most directly titled and tagged as a dabke dance cue.
+   AI:         yes
+
+2. Melodic Dabke Fusion Theme
+   Artist:     vjgalaxy
+   Duration:   1:13
+   License:    Pixabay Content License
+   Page:       https://pixabay.com/music/arabic-melodic-dabke-fusion-theme-588123/
+   File:       02_melodic-dabke-fusion-theme.mp3
+   Why:        Same series, slightly longer / more melodic dabke fusion.
+   AI:         yes
+
+3. Festival of Eid Joy (2)
+   Artist:     adiiswanto
+   Duration:   2:14
+   License:    Pixabay Content License
+   Page:       https://pixabay.com/music/world-festival-of-eid-joy-2-305122/
+   File:       03_festival-of-eid-joy-2.mp3
+   Why:        Festive Levantine/Middle Eastern instrumental; tagged dabke,
+               darbuka, mizmar, oud, qanun.
+   AI:         yes
+
+4. Festival of Eid Joy (1)
+   Artist:     adiiswanto
+   Duration:   3:59
+   License:    Pixabay Content License
+   Page:       https://pixabay.com/music/folk-festival-of-eid-joy-1-305121/
+   File:       04_festival-of-eid-joy-1.mp3
+   Why:        Companion festive track, also tagged dabke; longer bed.
+   AI:         yes
+
+5. Sam energetic Wedding music 2
+   Artist:    SAMusic
+   Duration:  2:16
+   License:   Pixabay Content License
+   Page:      https://pixabay.com/music/main-title-sam-energetic-wedding-music-2-264929/
+   File:      05_sam-energetic-wedding-music-2.mp3
+   Why:       Energetic wedding instrumental (not labeled dabke).
+   AI:        yes
+
+Rejected / not used
+-------------------
+- Commercial hits (Omar Alabdallat, Toni Qattan, etc.): copyrighted.
+- FMA "Darbuka Groove" (Serge Quadrado): CC-BY-NC — non-commercial only.
+- Freesound live-wedding field recordings: likely contain copyrighted songs.
+- Mixkit tracks under an "Arabic" tag (e.g. Feast From The East, Lazy Camel):
+  licensed, but not dabke / not Syrian wedding dance music.
+- Atlas • Syria (Vadim_Makes_Sound): Pixabay Content License, but cinematic
+  / dreamy qanun travel bed, not a dance dabke cue.
+- Sharid (EarsForMars): tagged Morocco / desert / Egypt more than Levantine dabke.
+
+Owner-supplied songs can be added later to this folder and listed in
+playlist.json. 15-second review clips are in:
+
+  /workspace/mrmood/monaco/_work/dabke_previews/

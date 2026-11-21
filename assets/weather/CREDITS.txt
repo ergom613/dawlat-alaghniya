@@ -1,0 +1,26 @@
+Weather assets on the preview map — all free, CC0 or MIT. No paid / NC assets.
+
+Clouds (Quaternius, CC0) via Poly Pizza
+  https://poly.pizza  (Quaternius "Cloud" / low-poly clouds)
+
+Sun flare and rain streaks — Kenney Particle Pack, CC0 1.0
+  Kenney Vleugels (Kenney.nl)
+  https://kenney.nl/assets/particle-pack
+  Files: flare_01, light_01, trace_01..03, smoke_08
+
+Day skybox (downsampled) — Kenney Skyboxes 1.0, CC0 1.0
+  https://kenney.nl/assets/skyboxes
+  skybox-day (1024×512)
+
+Snowflake sprites — three.js official snow example, MIT
+  examples/textures/snowflake*.png
+  (the official example credits historical René Descartes snow-crystal sketches, public domain)
+
+Quaternius snowflake mesh, snowy pine, snowy birch — CC0, via Poly Pizza
+
+Ground / roof snow color — ambientCG Snow 001, CC0
+  https://ambientcg.com/view?id=Snow001
+
+Not used (license or size): Zoe XR Sun (CC-BY 3.0, not in the approved CC0 kit);
+Armory Storm full GLB (CC0 but ~1.9MB — rain uses Kenney traces instead);
+three.js lensflare textures (ro.me license unclear).
