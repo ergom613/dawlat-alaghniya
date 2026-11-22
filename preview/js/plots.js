@@ -124,10 +124,10 @@ export function levelForIndex(i) {
   return 26 + (h % 5);
 }
 
-export const MIN_LEVEL = 3;
+export const MIN_LEVEL = 5;
 
-// Minimum house level is 3. Formula: max(3, 1 + floor(points/50)), capped at 30.
-// Exceptions (applied by the caller / stored data): house #1 stays 30, hnoo_kassar stays at least 10.
+// Minimum house level is 5. Formula: max(5, 1 + floor(points/50)), capped at 30.
+// Exceptions (applied by the caller / stored data): house #1 stays 30, hnoo_kassar stays at least 15.
 export function levelFromPoints(points) {
   const p = Math.max(0, Number(points) || 0);
   return Math.max(MIN_LEVEL, Math.min(30, 1 + Math.floor(p / 50)));
@@ -187,7 +187,7 @@ export function buildResidents(data, fileList, demoCount) {
       owner: !!(file && file.owner),
       level: (file && (file.owner || file.id === 1)) ? 30
         : ((file && (file.name === 'hnoo_kassar' || file.seed === 'hnoo_kassar'))
-          ? Math.max(10, Math.min(30, level | 0))
+          ? Math.max(15, Math.min(30, level | 0))
           : Math.max(demoCount > 1 ? 1 : MIN_LEVEL, Math.min(30, level | 0))),
       points: (file && file.points != null) ? file.points : undefined,
       x,

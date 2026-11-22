@@ -92,7 +92,7 @@ export function createTour({ camera, controls, getHouses, groundY }) {
     const orbitR = Math.max(70, 48 + h1h * 0.28);
     orbitKeys(list, h1.x, h1.z, gy(h1.x, h1.z) + h1h * 0.34, orbitR, orbitH, 0.85, 0.85 + Math.PI * 1.15, 5, 5.5);
 
-    // Pass celebrating houses (hnoo_kassar L10, and any later milestone).
+    // Pass celebrating houses (hnoo_kassar L15, and any later milestone).
     const cele = celebrating(houses);
     for (const h of cele) {
       if (Number(h.id) === 1) continue;
